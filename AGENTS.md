@@ -15,28 +15,21 @@
     - Array methods (map, filter, reduce) over traditional loops for transformations
     - Destructuring for cleaner object/array access
     - Adhere to reasonable JavaScript code guidelines
-    - Don't arbitrarily change method functions to arrow functions. Keep the original function declaration style unless
-      there's a specific
-      technical reason related to 'this' binding. Use arrow functions for callbacks and utility functions only.
+    - Don't arbitrarily change method functions to arrow functions. Keep the original function declaration style unless there's a specific technical reason related to 'this' binding. Use arrow functions for callbacks and utility functions only.
     - Consider modern JavaScript language syntax
 
 - Few comments: rely on self-documenting code
 
 - Purpose: professional, not explanatory/educational
 
-- Unit testing: avoid Mocks; test objects directly. Write focused, deterministic tests. Test behavior, not
-  implementation.
+- Unit testing: avoid Mocks; test objects directly. Write focused, deterministic tests. Test behavior, not implementation.
 
-- Error handling: Use specific error types, log with context, avoid empty catch blocks, prefer early returns,
-  handle errors at appropriate abstraction level
+- Error handling: Use specific error types, log with context, avoid empty catch blocks, prefer early returns, handle errors at appropriate abstraction level
 
-- Performance: Avoid object creation in hot paths, use Set for membership, cache expensive operations, minimize I/O,
-  prefer for...of over forEach for performance-critical code, be mindful of deep copying
+- Performance: Avoid object creation in hot paths, use Set for membership, cache expensive operations, minimize I/O, prefer for...of over forEach for performance-critical code, be mindful of deep copying
 
-- Naming: Use descriptive names, consistent patterns for similar concepts, avoid abbreviations, follow project
-  conventions
+- Naming: Use descriptive names, consistent patterns for similar concepts, avoid abbreviations, follow project conventions
 
 - Imports: Group and sort (stdlib, third-party, local), use consistent paths, avoid wildcards, prefer named imports
 
-- Code structure: Keep functions focused (single responsibility), limit function length, organize methods logically,
-  prefer composition over inheritance, maintain consistent class structure
+- Code structure: Keep functions focused (single responsibility), limit function length, organize methods logically, prefer composition over inheritance, maintain consistent class structure

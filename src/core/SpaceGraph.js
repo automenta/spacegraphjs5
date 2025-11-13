@@ -1,4 +1,7 @@
+// stdlib imports
 import * as THREE from 'three';
+
+// local imports
 import {HtmlNode} from '../graph/nodes/HtmlNode.js';
 import {PluginManager} from './PluginManager.js';
 import {RenderingPlugin} from '../plugins/RenderingPlugin.js';
@@ -16,11 +19,13 @@ export class SpaceGraph {
     _listeners = new Map();
     plugins = null;
     options = {};
-    // Properties for camera mouse controls
+    
+    // Camera mouse control properties
     _isDragging = false;
     _lastMouseX = 0;
     _lastMouseY = 0;
-    // Bound event handlers for camera mouse controls
+    
+    // Bound event handlers
     _boundHandleContextMenuEvent = null;
     _boundHandleMouseDownEvent = null;
     _boundHandleMouseMoveEvent = null;
@@ -28,7 +33,9 @@ export class SpaceGraph {
     _boundHandleWheelEvent = null;
 
     constructor(containerElement, options = {}) {
-        if (!containerElement) throw new Error('SpaceGraph requires a valid HTML container element.');
+        if (!containerElement) {
+            throw new TypeError('SpaceGraph requires a valid HTML container element.');
+        }
 
         this.container = containerElement;
         this.options = options;
@@ -37,16 +44,19 @@ export class SpaceGraph {
         const uiOptions = options.ui || {};
         const {contextMenuElement, confirmDialogElement} = uiOptions;
 
-        this.plugins.add(new CameraPlugin(this, this.plugins));
-        this.plugins.add(new RenderingPlugin(this, this.plugins));
-        this.plugins.add(new NodePlugin(this, this.plugins));
-        this.plugins.add(new EdgePlugin(this, this.plugins));
-        this.plugins.add(new LayoutPlugin(this, this.plugins));
-        this.plugins.add(new UIPlugin(this, this.plugins, contextMenuElement, confirmDialogElement));
-        this.plugins.add(new MinimapPlugin(this, this.plugins));
-        this.plugins.add(new DataPlugin(this, this.plugins));
-        this.plugins.add(new FractalZoomPlugin(this, this.plugins));
-        this.plugins.add(new PerformancePlugin(this, this.plugins));
+        // Register core plugins
+        [
+            [CameraPlugin, [this, this.plugins]],
+            [RenderingPlugin, [this, this.plugins]],
+            [NodePlugin, [this, this.plugins]],
+            [EdgePlugin, [this, this.plugins]],
+            [LayoutPlugin, [this, this.plugins]],
+            [UIPlugin, [this, this.plugins, contextMenuElement, confirmDialogElement]],
+            [MinimapPlugin, [this, this.plugins]],
+            [DataPlugin, [this, this.plugins]],
+            [FractalZoomPlugin, [this, this.plugins]],
+            [PerformancePlugin, [this, this.plugins]]
+        ].forEach(([PluginClass, args]) => this.plugins.add(new PluginClass(...args)));
     }
 
     get layoutManager() {
@@ -61,23 +71,21 @@ export class SpaceGraph {
      * @returns {Promise<SpaceGraph>} The initialized and animated SpaceGraph instance
      */
     static async the(containerOrContainerID, options = {}) {
-        // Handle both element and ID inputs
         const container = typeof containerOrContainerID === 'string'
             ? document.getElementById(containerOrContainerID)
             : containerOrContainerID;
 
         if (!container) {
-            throw new Error(`Container not found: ${containerOrContainerID}`);
+            throw new ReferenceError(`Container not found: ${containerOrContainerID}`);
         }
 
         const defaultOptions = {
             ui: {
-                contextMenuElement: document.createElement('div'), // Minimal context menu
-                confirmDialogElement: document.createElement('div'), // Minimal confirm dialog
+                contextMenuElement: document.createElement('div'),
+                confirmDialogElement: document.createElement('div'),
             }
         };
 
-        // Merge options with defaults
         const config = {
             ...defaultOptions,
             ...options,
@@ -89,8 +97,6 @@ export class SpaceGraph {
 
         const space = new SpaceGraph(container, config);
         await space.init();
-
-        // Start animation by default for immediate visual feedback
         space.animate();
 
         return space;
@@ -123,9 +129,7 @@ export class SpaceGraph {
     }
 
     on(eventName, callback) {
-        if (!this._listeners.has(eventName)) {
-            this._listeners.set(eventName, new Set());
-        }
+        this._listeners.has(eventName) || this._listeners.set(eventName, new Set());
         this._listeners.get(eventName).add(callback);
     }
 
@@ -137,7 +141,6 @@ export class SpaceGraph {
         this._listeners.get(eventName)?.forEach(callback => callback(...args));
     }
 
-    /** Sets up all event listeners by delegating to more specific methods. */
     _setupAllEventListeners() {
         this._setupNodeEventListeners();
         this._setupEdgeEventListeners();
@@ -145,7 +148,6 @@ export class SpaceGraph {
         this._setupCameraEventListeners();
     }
 
-    /** Sets up event listeners related to node operations. */
     _setupNodeEventListeners() {
         this.on('ui:request:addNode', nodeInstance => this._nodePlugin?.addNode(nodeInstance));
         this.on('ui:request:createNode', nodeConfig => this._nodePlugin?.createAndAddNode(nodeConfig));
@@ -155,10 +157,9 @@ export class SpaceGraph {
         this.on('ui:request:adjustNodeSize', this._handleAdjustNodeSize.bind(this));
     }
 
-    /** Handles actions to take after a node has been added. */
     _handleNodeAdded(addedNodeId, addedNodeInstance) {
         if (!addedNodeInstance) return;
-        // Delay focusing and selecting to allow the graph to settle.
+        
         setTimeout(() => {
             this.focusOnNode(addedNodeInstance, 0.6, true);
             this._uiPlugin?.setSelectedNode(addedNodeInstance);
@@ -168,33 +169,23 @@ export class SpaceGraph {
         }, 100);
     }
 
-    /** Handles requests to adjust content scale for HTML nodes. */
     _handleAdjustContentScale(node, factor) {
-        if (node instanceof HtmlNode) {
-            node.adjustContentScale(factor);
-        }
+        if (node instanceof HtmlNode) node.adjustContentScale(factor);
     }
 
-    /** Handles requests to adjust node size for HTML nodes. */
     _handleAdjustNodeSize(node, factor) {
-        if (node instanceof HtmlNode) {
-            node.adjustNodeSize(factor);
-        }
+        if (node instanceof HtmlNode) node.adjustNodeSize(factor);
     }
 
-    /** Sets up event listeners related to edge operations. */
     _setupEdgeEventListeners() {
         this.on('ui:request:addEdge', (sourceNode, targetNode, data) =>
             this._edgePlugin?.addEdge(sourceNode, targetNode, data)
         );
-        this.on('edge:added', () => {
-        }); // Placeholder for future use
         this.on('ui:request:removeEdge', edgeId => this._edgePlugin?.removeEdge(edgeId));
         this.on('ui:request:reverseEdge', this._handleReverseEdge.bind(this));
         this.on('ui:request:updateEdge', this._handleUpdateEdge.bind(this));
     }
 
-    /** Handles requests to reverse an edge. */
     _handleReverseEdge(edgeId) {
         const edge = this._edgePlugin?.getEdgeById(edgeId);
         if (!edge) return;
@@ -204,7 +195,6 @@ export class SpaceGraph {
         this._layoutPlugin?.kick();
     }
 
-    /** Handles requests to update specific properties of an edge. */
     _handleUpdateEdge(edgeId, property, value) {
         const edge = this._edgePlugin?.getEdgeById(edgeId);
         if (!edge) return;
@@ -222,47 +212,36 @@ export class SpaceGraph {
                 this._updateEdgeConstraint(edge, value);
                 this._layoutPlugin?.kick();
                 break;
-            default:
-                // Unknown property, ignore
-                break;
         }
     }
 
-    /** Updates the constraint parameters for an edge based on its type. */
     _updateEdgeConstraint(edge, constraintType) {
         edge.data.constraintType = constraintType;
         const params = edge.data.constraintParams || {};
 
         switch (constraintType) {
             case 'rigid':
-                if (!params.distance) {
-                    params.distance = edge.source.position.distanceTo(edge.target.position);
-                }
-                params.stiffness = params.stiffness ?? 0.1;
+                params.distance ??= edge.source.position.distanceTo(edge.target.position);
+                params.stiffness ??= 0.1;
                 break;
             case 'weld':
-                if (!params.distance) {
-                    params.distance =
-                        edge.source.getBoundingSphereRadius() + edge.target.getBoundingSphereRadius();
-                }
-                params.stiffness = params.stiffness ?? 0.5;
+                params.distance ??= edge.source.getBoundingSphereRadius() + edge.target.getBoundingSphereRadius();
+                params.stiffness ??= 0.5;
                 break;
             case 'elastic':
-                params.stiffness = params.stiffness ?? 0.001;
-                params.idealLength = params.idealLength ?? 200;
+                params.stiffness ??= 0.001;
+                params.idealLength ??= 200;
                 break;
         }
         edge.data.constraintParams = params;
     }
 
-    /** Sets up event listeners related to UI elements like background. */
     _setupUIEventListeners() {
         this.on('ui:request:toggleBackground', (color, alpha) =>
             this._renderingPlugin?.setBackground(color, alpha)
         );
     }
 
-    /** Sets up event listeners related to camera controls and view manipulation. */
     _setupCameraEventListeners() {
         this.on('ui:request:autoZoomNode', node => this.autoZoom(node));
         this.on('ui:request:centerView', () => this.centerView());
@@ -335,13 +314,10 @@ export class SpaceGraph {
         if (!instancedNodeManager) return null;
 
         const intersection = instancedNodeManager.raycast(raycaster);
-        if (intersection) {
-            const node = this._nodePlugin?.getNodeById(intersection.nodeId);
-            if (node) {
-                return {node, distance: intersection.distance, type: 'node'};
-            }
-        }
-        return null;
+        if (!intersection) return null;
+
+        const node = this._nodePlugin?.getNodeById(intersection.nodeId);
+        return node ? {node, distance: intersection.distance, type: 'node'} : null;
     }
 
     _intersectNonInstancedNodes(raycaster, currentClosest) {
@@ -349,23 +325,19 @@ export class SpaceGraph {
         if (!currentNodes) return currentClosest;
 
         const nonInstancedNodeMeshes = [...currentNodes.values()]
-            .filter(n => !n.isInstanced && n.mesh && n.mesh.visible)
+            .filter(n => !n.isInstanced && n.mesh?.visible)
             .map(n => n.mesh);
 
-        if (nonInstancedNodeMeshes.length > 0) {
-            const intersects = raycaster.intersectObjects(nonInstancedNodeMeshes, false);
-            if (
-                intersects.length > 0 &&
-                (!currentClosest || intersects[0].distance < currentClosest.distance)
-            ) {
-                const intersectedMesh = intersects[0].object;
-                const node = this._nodePlugin.getNodeById(intersectedMesh.userData?.nodeId);
-                if (node) {
-                    return {node, distance: intersects[0].distance, type: 'node'};
-                }
-            }
-        }
-        return currentClosest;
+        if (nonInstancedNodeMeshes.length === 0) return currentClosest;
+
+        const intersects = raycaster.intersectObjects(nonInstancedNodeMeshes, false);
+        if (intersects.length === 0) return currentClosest;
+
+        const [firstIntersect] = intersects;
+        if (currentClosest && firstIntersect.distance >= currentClosest.distance) return currentClosest;
+
+        const node = this._nodePlugin.getNodeById(firstIntersect.object.userData?.nodeId);
+        return node ? {node, distance: firstIntersect.distance, type: 'node'} : currentClosest;
     }
 
     _intersectInstancedEdges(raycaster, currentClosest) {
@@ -373,13 +345,10 @@ export class SpaceGraph {
         if (!instancedEdgeManager) return currentClosest;
 
         const intersection = instancedEdgeManager.raycast(raycaster);
-        if (intersection && (!currentClosest || intersection.distance < currentClosest.distance)) {
-            const edge = this._edgePlugin?.getEdgeById(intersection.edgeId);
-            if (edge) {
-                return {edge, distance: intersection.distance, type: 'edge'};
-            }
-        }
-        return currentClosest;
+        if (!intersection || (currentClosest && intersection.distance >= currentClosest.distance)) return currentClosest;
+
+        const edge = this._edgePlugin?.getEdgeById(intersection.edgeId);
+        return edge ? {edge, distance: intersection.distance, type: 'edge'} : currentClosest;
     }
 
     _intersectNonInstancedEdges(raycaster, currentClosest) {
@@ -387,23 +356,19 @@ export class SpaceGraph {
         if (!currentEdges) return currentClosest;
 
         const nonInstancedEdgeLines = [...currentEdges.values()]
-            .filter(e => !e.isInstanced && e.line && e.line.visible)
+            .filter(e => !e.isInstanced && e.line?.visible)
             .map(e => e.line);
 
-        if (nonInstancedEdgeLines.length > 0) {
-            const intersects = raycaster.intersectObjects(nonInstancedEdgeLines, false);
-            if (
-                intersects.length > 0 &&
-                (!currentClosest || intersects[0].distance < currentClosest.distance)
-            ) {
-                const intersectedLine = intersects[0].object;
-                const edge = this._edgePlugin.getEdgeById(intersectedLine.userData?.edgeId);
-                if (edge) {
-                    return {edge, distance: intersects[0].distance, type: 'edge'};
-                }
-            }
-        }
-        return currentClosest;
+        if (nonInstancedEdgeLines.length === 0) return currentClosest;
+
+        const intersects = raycaster.intersectObjects(nonInstancedEdgeLines, false);
+        if (intersects.length === 0) return currentClosest;
+
+        const [firstIntersect] = intersects;
+        if (currentClosest && firstIntersect.distance >= currentClosest.distance) return currentClosest;
+
+        const edge = this._edgePlugin.getEdgeById(firstIntersect.object.userData?.edgeId);
+        return edge ? {edge, distance: firstIntersect.distance, type: 'edge'} : currentClosest;
     }
 
     intersectedObjects(screenX, screenY) {
@@ -419,19 +384,12 @@ export class SpaceGraph {
         raycaster.setFromCamera(vec, camInstance);
         raycaster.params.Line.threshold = 5;
 
-        let closestIntersect = null;
-
-        // Check instanced nodes
-        closestIntersect = this._intersectInstancedNodes(raycaster);
-
-        // Check non-instanced nodes
-        closestIntersect = this._intersectNonInstancedNodes(raycaster, closestIntersect);
-
-        // Check instanced edges
-        closestIntersect = this._intersectInstancedEdges(raycaster, closestIntersect);
-
-        // Check non-instanced edges
-        closestIntersect = this._intersectNonInstancedEdges(raycaster, closestIntersect);
+        const closestIntersect = [
+            this._intersectInstancedNodes(raycaster),
+            this._intersectNonInstancedNodes(raycaster, null),
+            this._intersectInstancedEdges(raycaster, null),
+            this._intersectNonInstancedEdges(raycaster, null)
+        ].filter(Boolean).sort((a, b) => a.distance - b.distance)[0];
 
         if (!closestIntersect) return null;
 
@@ -489,17 +447,24 @@ export class SpaceGraph {
         this._lastMouseX = event.clientX;
         this._lastMouseY = event.clientY;
 
-        if (cameraControls.cameraMode === 'drag_orbit') {
-            if (event.button === 0) {
-                cameraControls.startPan(event.clientX, event.clientY);
-            } else if (event.button === 1 || event.button === 2) {
-                event.preventDefault();
-                cameraControls.startOrbitDrag(event.clientX, event.clientY);
-            }
-        } else if (cameraControls.cameraMode === 'orbit' || cameraControls.cameraMode === 'top_down') {
-            if (event.button === 0) {
-                cameraControls.startPan(event.clientX, event.clientY);
-            }
+        const {cameraMode} = cameraControls;
+        const {button} = event;
+        
+        switch (cameraMode) {
+            case 'drag_orbit':
+                if (button === 0) {
+                    cameraControls.startPan(event.clientX, event.clientY);
+                } else if (button === 1 || button === 2) {
+                    event.preventDefault();
+                    cameraControls.startOrbitDrag(event.clientX, event.clientY);
+                }
+                break;
+            case 'orbit':
+            case 'top_down':
+                if (button === 0) {
+                    cameraControls.startPan(event.clientX, event.clientY);
+                }
+                break;
         }
     }
 
@@ -513,11 +478,8 @@ export class SpaceGraph {
         this._lastMouseX = event.clientX;
         this._lastMouseY = event.clientY;
 
-        if (cameraControls.isPanning) {
-            cameraControls.pan(deltaX, deltaY);
-        } else if (cameraControls.isOrbitDragging) {
-            cameraControls.orbitDrag(deltaX, deltaY);
-        }
+        cameraControls.isPanning && cameraControls.pan(deltaX, deltaY);
+        cameraControls.isOrbitDragging && cameraControls.orbitDrag(deltaX, deltaY);
     }
 
     _handleMouseUpOrLeaveEvent() {
@@ -525,12 +487,8 @@ export class SpaceGraph {
         const cameraControls = this._cameraPlugin?.getControls();
         if (!cameraControls) return;
 
-        if (cameraControls.isPanning) {
-            cameraControls.endPan();
-        }
-        if (cameraControls.isOrbitDragging) {
-            cameraControls.endOrbitDrag();
-        }
+        cameraControls.isPanning && cameraControls.endPan();
+        cameraControls.isOrbitDragging && cameraControls.endOrbitDrag();
         this._isDragging = false;
     }
 

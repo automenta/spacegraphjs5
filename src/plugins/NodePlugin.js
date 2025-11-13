@@ -1,3 +1,5 @@
+// stdlib imports
+// local imports
 import {Plugin} from '../core/Plugin.js';
 import {Utils} from '../utils.js';
 import {NodeFactory} from '../graph/NodeFactory.js';
@@ -33,18 +35,24 @@ export class NodePlugin extends Plugin {
     }
 
     _registerNodeTypes() {
-        this.nodeFactory.registerType(HtmlNode.typeName, HtmlNode);
-        this.nodeFactory.registerType(ShapeNode.typeName, ShapeNode);
-        this.nodeFactory.registerType(ImageNode.typeName, ImageNode);
-        this.nodeFactory.registerType(VideoNode.typeName, VideoNode);
-        this.nodeFactory.registerType(IFrameNode.typeName, IFrameNode);
-        this.nodeFactory.registerType(GroupNode.typeName, GroupNode);
-        this.nodeFactory.registerType(DataNode.typeName, DataNode);
-        this.nodeFactory.registerType(NoteNode.typeName, NoteNode);
-        this.nodeFactory.registerType(AudioNode.typeName, AudioNode);
-        this.nodeFactory.registerType(DocumentNode.typeName, DocumentNode);
-        this.nodeFactory.registerType(ChartNode.typeName, ChartNode);
-        this.nodeFactory.registerType('default', ShapeNode);
+        const nodeTypes = [
+            [HtmlNode.typeName, HtmlNode],
+            [ShapeNode.typeName, ShapeNode],
+            [ImageNode.typeName, ImageNode],
+            [VideoNode.typeName, VideoNode],
+            [IFrameNode.typeName, IFrameNode],
+            [GroupNode.typeName, GroupNode],
+            [DataNode.typeName, DataNode],
+            [NoteNode.typeName, NoteNode],
+            [AudioNode.typeName, AudioNode],
+            [DocumentNode.typeName, DocumentNode],
+            [ChartNode.typeName, ChartNode],
+            ['default', ShapeNode]
+        ];
+        
+        nodeTypes.forEach(([typeName, nodeClass]) =>
+            this.nodeFactory.registerType(typeName, nodeClass)
+        );
     }
 
     getName() {
@@ -60,7 +68,6 @@ export class NodePlugin extends Plugin {
         this.instancedMeshManager = this._renderingPlugin?.getInstancedMeshManager();
     }
 
-    // Node management
     addNode(nodeInstance) {
         nodeInstance.id ??= Utils.generateId('node');
         if (this.nodes.has(nodeInstance.id)) {
@@ -74,19 +81,14 @@ export class NodePlugin extends Plugin {
         const cssScene = this._renderingPlugin?.getCSS3DScene();
         const webglScene = this._renderingPlugin?.getWebGLScene();
 
-        let successfullyInstanced = false;
-        if (
-            this.instancedMeshManager &&
+        const successfullyInstanced = this.instancedMeshManager &&
             nodeInstance instanceof ShapeNode &&
-            nodeInstance.data.shape === 'sphere'
-        ) {
-            successfullyInstanced = this.instancedMeshManager.addNode(nodeInstance);
-        }
+            nodeInstance.data.shape === 'sphere' &&
+            this.instancedMeshManager.addNode(nodeInstance);
 
-        if (nodeInstance.cssObject && cssScene) cssScene.add(nodeInstance.cssObject);
-        if (nodeInstance.labelObject && cssScene) cssScene.add(nodeInstance.labelObject);
-        if (!successfullyInstanced && nodeInstance.mesh && webglScene)
-            webglScene.add(nodeInstance.mesh);
+        nodeInstance.cssObject && cssScene?.add(nodeInstance.cssObject);
+        nodeInstance.labelObject && cssScene?.add(nodeInstance.labelObject);
+        !successfullyInstanced && nodeInstance.mesh && webglScene?.add(nodeInstance.mesh);
 
         this.space.emit('node:added', nodeInstance.id, nodeInstance);
         return nodeInstance;
@@ -107,14 +109,13 @@ export class NodePlugin extends Plugin {
         const node = this.nodes.get(nodeId);
         if (!node) return console.warn(`NodePlugin: Node ${nodeId} not found.`);
 
-        if (this._uiPlugin?.getSelectedNode() === node) this._uiPlugin.setSelectedNode(null);
-        if (this._uiPlugin?.getLinkSourceNode() === node) this._uiPlugin.cancelLinking();
+        this._uiPlugin?.getSelectedNode() === node && this._uiPlugin.setSelectedNode(null);
+        this._uiPlugin?.getLinkSourceNode() === node && this._uiPlugin.cancelLinking();
 
         this._edgePlugin?.getEdgesForNode(node).forEach(edge => this._edgePlugin?.removeEdge(edge.id));
-
         this._layoutPlugin?.removeNodeFromLayout(node);
 
-        if (node.isInstanced && this.instancedMeshManager) this.instancedMeshManager.removeNode(node);
+        node.isInstanced && this.instancedMeshManager && this.instancedMeshManager.removeNode(node);
         node.dispose();
         this.nodes.delete(nodeId);
         this.space.emit('node:removed', nodeId, node);
@@ -128,10 +129,9 @@ export class NodePlugin extends Plugin {
         return this.nodes;
     }
 
-    // Updates
     update() {
         this.nodes.forEach(node => {
-            if (node.isInstanced && this.instancedMeshManager) this.instancedMeshManager.updateNode(node);
+            node.isInstanced && this.instancedMeshManager && this.instancedMeshManager.updateNode(node);
             node.update?.(this.space);
         });
     }

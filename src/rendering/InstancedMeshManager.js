@@ -1,3 +1,4 @@
+// stdlib imports
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
 
@@ -177,7 +178,7 @@ export class InstancedMeshManager {
         }
         node.isInstanced = true;
         node.instanceId = instanceId;
-        if (node.mesh) node.mesh.visible = false;
+        node.mesh && (node.mesh.visible = false);
         return true;
     }
 
@@ -201,17 +202,10 @@ export class InstancedMeshManager {
     }
 
     raycast(raycaster) {
-        let closestIntersection = null;
-        for (const group of this.meshGroups.values()) {
-            const intersection = group.getRaycastIntersection(raycaster);
-            if (
-                intersection &&
-                (!closestIntersection || intersection.distance < closestIntersection.distance)
-            ) {
-                closestIntersection = intersection;
-            }
-        }
-        return closestIntersection;
+        return [...this.meshGroups.values()]
+            .map(group => group.getRaycastIntersection(raycaster))
+            .filter(Boolean)
+            .sort((a, b) => a.distance - b.distance)[0] || null;
     }
 
     dispose() {

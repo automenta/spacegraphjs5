@@ -60,12 +60,14 @@ global.document = {
 
 // Mock CSS3DObject from Three.js
 vi.mock('three/addons/renderers/CSS3DRenderer.js', () => ({
-    CSS3DObject: vi.fn().mockImplementation(element => ({
-        element: element,
-        position: {copy: vi.fn()},
-        quaternion: {copy: vi.fn()},
-        userData: {},
-    })),
+    CSS3DObject: class {
+        constructor(element) {
+            this.element = element;
+            this.position = {copy: vi.fn()};
+            this.quaternion = {copy: vi.fn()};
+            this.userData = {};
+        }
+    },
 }));
 
 describe('ControlPanelNode', () => {

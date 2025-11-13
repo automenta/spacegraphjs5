@@ -15,11 +15,8 @@ global.document = {
             removeChild: vi.fn(),
             setAttribute: vi.fn(),
             removeAttribute: vi.fn(),
-            // This querySelector on 'el' will be context.querySelector
             querySelector: vi.fn(function (selector) {
-                // Use function to access this.tagName if needed
                 if (selector === '.progress-container') return {innerHTML: ''};
-                // Add more specific mocks if other selectors are used on the element itself
                 return null;
             }),
             querySelectorAll: vi.fn(() => []),
@@ -30,12 +27,14 @@ global.document = {
 };
 
 vi.mock('three/addons/renderers/CSS3DRenderer.js', () => ({
-    CSS3DObject: vi.fn().mockImplementation(element => ({
-        element: element,
-        position: {copy: vi.fn()},
-        quaternion: {copy: vi.fn()},
-        userData: {},
-    })),
+    CSS3DObject: class {
+        constructor(element) {
+            this.element = element;
+            this.position = {copy: vi.fn()};
+            this.quaternion = {copy: vi.fn()};
+            this.userData = {};
+        }
+    },
 }));
 
 describe('ProgressNode', () => {
@@ -45,16 +44,16 @@ describe('ProgressNode', () => {
     beforeEach(() => {
         mockSpace = {emit: vi.fn()};
         const initialData = {
-            label: 'Test Progress', // Changed from title to label to match ProgressNode data
-            progressType: 'bar', // Changed from type to progressType
+            label: 'Test Progress',
+            progressType: 'bar',
             value: 50,
             min: 0,
             max: 100,
             color: '#4CAF50',
-            showLabel: true, // This is not directly used by ProgressNode, but by HtmlNode's label
+            showLabel: true,
         };
         node = new ProgressNode('progress-1', {x: 0, y: 0, z: 0}, initialData);
-        node.space = mockSpace; // Inject mock space
+        node.space = mockSpace;
     });
 
     it('should create a ProgressNode with correct properties', () => {
@@ -72,14 +71,12 @@ describe('ProgressNode', () => {
         expect(typeof node.increment).toBe('function');
         expect(typeof node.decrement).toBe('function');
         expect(typeof node.animateToValue).toBe('function');
-        // getValue and getPercentage are not direct public methods.
-        // Value is in node.data.value, percentage is node._getPercent()
     });
 
     it('should set and get values correctly', () => {
         node.setValue(75);
         expect(node.data.value).toBe(75);
-        expect(node._getPercent()).toBe(75); // Test internal _getPercent
+        expect(node._getPercent()).toBe(75);
     });
 
     it('should handle value range correctly with setMin/setMax', () => {
@@ -87,15 +84,15 @@ describe('ProgressNode', () => {
         node.setMax(200);
         node.setValue(150);
         expect(node.data.value).toBe(150);
-        expect(node._getPercent()).toBe(75); // (150-0) / (200-0) * 100
+        expect(node._getPercent()).toBe(75);
     });
 
     it('should clamp values to min/max range on setValue', () => {
         node.setValue(-10);
-        expect(node.data.value).toBe(node.data.min); // Clamped to min (0 by default)
+        expect(node.data.value).toBe(node.data.min);
 
         node.setValue(150);
-        expect(node.data.value).toBe(node.data.max); // Clamped to max (100 by default)
+        expect(node.data.value).toBe(node.data.max);
     });
 
     it('should support different progress types via data.progressType', () => {
@@ -111,10 +108,7 @@ describe('ProgressNode', () => {
     });
 
     it('should store color in data (no direct setColor method)', () => {
-        // Color is set at construction via data.color
         expect(node.data.color).toBe('#4CAF50');
-        // To change color, one would typically modify data and re-render or have a specific method.
-        // For now, we confirm it's stored.
     });
 
     it('should emit dataChanged event when value changes', () => {
@@ -125,29 +119,4 @@ describe('ProgressNode', () => {
             value: 80,
         });
     });
-});
-
-// Mock requestAnimationFrame and cancelAnimationFrame for animateToValue
-beforeEach(() => {
-    vi.useFakeTimers();
-    global.requestAnimationFrame = vi.fn(cb => {
-        cb(performance.now());
-        return Date.now();
-    });
-    global.cancelAnimationFrame = vi.fn();
-    let currentTime = Date.now();
-    global.performance = {
-        now: vi.fn(() => {
-            currentTime += 16; // Simulate time passing for each frame
-            return currentTime;
-        }),
-    };
-});
-
-afterEach(() => {
-    vi.runOnlyPendingTimers();
-    vi.useRealTimers();
-    delete global.requestAnimationFrame;
-    delete global.cancelAnimationFrame;
-    delete global.performance;
 });

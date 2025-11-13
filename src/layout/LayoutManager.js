@@ -1,3 +1,4 @@
+// stdlib imports
 import {gsap} from 'gsap';
 
 export class LayoutManager {
@@ -10,9 +11,7 @@ export class LayoutManager {
     }
 
     registerLayout(name, layoutInstance) {
-        if (this.layouts.has(name)) {
-            console.warn(`LayoutManager: Layout "${name}" already registered. Overwriting.`);
-        }
+        this.layouts.has(name) && console.warn(`LayoutManager: Layout "${name}" already registered. Overwriting.`);
         layoutInstance.setContext?.(this.space, this.pluginManager);
         this.layouts.set(name, layoutInstance);
     }
@@ -25,13 +24,7 @@ export class LayoutManager {
         }
 
         // Stop current layout if exists
-        if (this.activeLayout) {
-            this.activeLayout.stop?.();
-            this.space.emit('layout:stopped', {
-                name: this.activeLayoutName,
-                layout: this.activeLayout
-            });
-        }
+        this.activeLayout && this._stopCurrentLayout();
 
         // Set new active layout
         this.activeLayout = newLayout;
@@ -53,26 +46,7 @@ export class LayoutManager {
             await this.activeLayout.init(nodes, edges, config);
 
             // Animate position transitions
-            await Promise.all(
-                nodes.map(node => {
-                    const currentPos = oldPositions.get(node.id);
-                    const targetPos = node.position;
-
-                    node.position.copy(currentPos);
-
-                    return new Promise(resolve => {
-                        gsap.to(node.position, {
-                            x: targetPos.x,
-                            y: targetPos.y,
-                            z: targetPos.z,
-                            duration: 0.7,
-                            ease: 'power2.inOut',
-                            overwrite: true,
-                            onComplete: resolve,
-                        });
-                    });
-                })
-            );
+            await Promise.all(nodes.map(node => this._animateNodePosition(node, oldPositions.get(node.id), node.position)));
         }
 
         // Run the layout
@@ -83,14 +57,32 @@ export class LayoutManager {
         return true;
     }
 
-    stopLayout() {
-        if (this.activeLayout) {
-            this.activeLayout.stop?.();
-            this.space.emit('layout:stopped', {
-                name: this.activeLayoutName,
-                layout: this.activeLayout
+    _animateNodePosition(node, currentPos, targetPos) {
+        node.position.copy(currentPos);
+        
+        return new Promise(resolve => {
+            gsap.to(node.position, {
+                x: targetPos.x,
+                y: targetPos.y,
+                z: targetPos.z,
+                duration: 0.7,
+                ease: 'power2.inOut',
+                overwrite: true,
+                onComplete: resolve,
             });
-        }
+        });
+    }
+
+    _stopCurrentLayout() {
+        this.activeLayout.stop?.();
+        this.space.emit('layout:stopped', {
+            name: this.activeLayoutName,
+            layout: this.activeLayout
+        });
+    }
+
+    stopLayout() {
+        this.activeLayout && this._stopCurrentLayout();
     }
 
     update() {

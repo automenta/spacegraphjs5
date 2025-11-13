@@ -1,6 +1,33 @@
 import {beforeEach, describe, expect, it, vi} from 'vitest';
 import {ConstraintLayout} from './ConstraintLayout.js';
 
+// Mock THREE library for Vector3 and potentially other components if needed by ConstraintLayout
+vi.mock('three', async importOriginal => {
+    const actualThree = await importOriginal();
+    return {
+        ...actualThree,
+        Vector3: class {
+            constructor(x = 0, y = 0, z = 0) {
+                this.x = x;
+                this.y = y;
+                this.z = z;
+                this.clone = vi.fn().mockReturnThis();
+                this.sub = vi.fn().mockReturnThis();
+                this.length = vi.fn(() => 1.0);
+                this.multiplyScalar = vi.fn().mockReturnThis();
+                this.divideScalar = vi.fn().mockReturnThis();
+                this.add = vi.fn().mockReturnThis();
+                this.set = vi.fn().mockReturnThis();
+                this.normalize = vi.fn().mockReturnThis();
+                this.copy = vi.fn().mockReturnThis();
+                this.angleTo = vi.fn(() => Math.PI / 2);
+                this.cross = vi.fn().mockReturnThis();
+                this.applyAxisAngle = vi.fn().mockReturnThis();
+            }
+        },
+    };
+});
+
 describe('ConstraintLayout', () => {
     let layout;
     let nodes;
@@ -139,80 +166,4 @@ describe('ConstraintLayout', () => {
 
     // layout.constraintTypes does not exist. Supported types are known from method names.
     // it('should support different constraint types', () => { ... });
-});
-
-// Mock THREE library for Vector3 and potentially other components if needed by ConstraintLayout
-// This needs to be at the top level, not inside describe.
-// Define a more complete mock for Vector3 instances
-const mockVector3Instance = {
-    x: 0,
-    y: 0,
-    z: 0,
-    clone: vi.fn(function () {
-        return {
-            ...this,
-            clone: mockVector3Instance.clone,
-            sub: mockVector3Instance.sub,
-            length: mockVector3Instance.length,
-            multiplyScalar: mockVector3Instance.multiplyScalar,
-            divideScalar: mockVector3Instance.divideScalar,
-            add: mockVector3Instance.add,
-            set: mockVector3Instance.set,
-            normalize: mockVector3Instance.normalize,
-            copy: mockVector3Instance.copy,
-            angleTo: mockVector3Instance.angleTo,
-            cross: mockVector3Instance.cross,
-            applyAxisAngle: mockVector3Instance.applyAxisAngle,
-        };
-    }),
-    sub: vi.fn(function () {
-        return this;
-    }), // Simplified: returns self, real Vector3 returns new
-    length: vi.fn(() => 1.0), // Default length
-    multiplyScalar: vi.fn(function () {
-        return this;
-    }), // Simplified
-    divideScalar: vi.fn(function () {
-        return this;
-    }), // Added missing method
-    add: vi.fn(function () {
-        return this;
-    }), // Simplified
-    set: vi.fn(function (x, y, z) {
-        this.x = x;
-        this.y = y;
-        this.z = z;
-        return this;
-    }),
-    normalize: vi.fn(function () {
-        return this;
-    }),
-    copy: vi.fn(function (v) {
-        this.x = v.x;
-        this.y = v.y;
-        this.z = v.z;
-        return this;
-    }),
-    angleTo: vi.fn(() => Math.PI / 2), // Example angle
-    cross: vi.fn(function () {
-        return this;
-    }), // Simplified
-    applyAxisAngle: vi.fn(function () {
-        return this;
-    }), // Simplified
-};
-
-vi.mock('three', async importOriginal => {
-    const actualThree = await importOriginal();
-    return {
-        ...actualThree,
-        Vector3: vi.fn((x, y, z) => {
-            // Create a new object for each instance to avoid shared state issues from the simple mock
-            const newInstance = {...mockVector3Instance};
-            newInstance.x = x || 0;
-            newInstance.y = y || 0;
-            newInstance.z = z || 0;
-            return newInstance;
-        }),
-    };
 });

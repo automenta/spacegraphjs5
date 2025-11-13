@@ -1,4 +1,7 @@
+// stdlib imports
 import * as THREE from 'three';
+
+// local imports
 import {Utils} from '../../utils.js';
 import {GRAPH_CONSTANTS} from '../constants.js';
 
@@ -25,8 +28,7 @@ export class Node {
         return {label: ''};
     }
 
-    update(_space) {
-    }
+    update(_space) {}
 
     dispose() {
         this.mesh?.geometry?.dispose();
@@ -36,6 +38,7 @@ export class Node {
         this.cssObject?.parent?.remove(this.cssObject);
         this.labelObject?.element?.remove();
         this.labelObject?.parent?.remove(this.labelObject);
+        
         this.space = null;
         this.mesh = null;
         this.cssObject = null;
@@ -46,19 +49,16 @@ export class Node {
         return GRAPH_CONSTANTS.DEFAULT_NODE_SIZE;
     }
 
-    setSelectedStyle(_selected) {
-    }
+    setSelectedStyle(_selected) {}
 
     setPosition(pos, y, z) {
         const {x, _y, _z} = typeof pos === 'object' && pos !== null ? pos : {x: pos, _y: y, _z: z};
         const finalY = _y ?? 0;
         const finalZ = _z ?? 0;
 
-        if (!isFinite(x) || !isFinite(finalY) || !isFinite(finalZ)) {
+        if (![x, finalY, finalZ].every(isFinite)) {
             console.warn(`BaseNode.setPosition: Attempted to set invalid position for node ${this.id}:`, {
-                x,
-                y: finalY,
-                z: finalZ,
+                x, y: finalY, z: finalZ
             });
             return;
         }

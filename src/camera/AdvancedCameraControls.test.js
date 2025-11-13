@@ -1,33 +1,41 @@
 import {beforeEach, describe, expect, it, vi} from 'vitest';
 import {AdvancedCameraControls} from './AdvancedCameraControls.js';
 
-// Mock Three.js dependencies
+// Mock Three.js dependencies with proper class constructors
 const mockThree = {
-    Vector3: vi.fn(() => ({
-        copy: vi.fn(),
-        normalize: vi.fn(),
-        multiplyScalar: vi.fn(),
-        add: vi.fn(),
-        sub: vi.fn(),
-        length: vi.fn(() => 1),
-        distanceTo: vi.fn(() => 5),
-        lerp: vi.fn(),
-        x: 0,
-        y: 0,
-        z: 0,
-    })),
-    Euler: vi.fn(() => ({
-        x: 0,
-        y: 0,
-        z: 0,
-    })),
-    Quaternion: vi.fn(() => ({
-        slerp: vi.fn(),
-    })),
-    Clock: vi.fn(() => ({
-        getDelta: vi.fn(() => 0.016),
-        getElapsedTime: vi.fn(() => 1.0),
-    })),
+    Vector3: class {
+        constructor(x = 0, y = 0, z = 0) {
+            this.x = x;
+            this.y = y;
+            this.z = z;
+            this.copy = vi.fn().mockReturnThis();
+            this.normalize = vi.fn().mockReturnThis();
+            this.multiplyScalar = vi.fn().mockReturnThis();
+            this.add = vi.fn().mockReturnThis();
+            this.sub = vi.fn().mockReturnThis();
+            this.length = vi.fn(() => 1);
+            this.distanceTo = vi.fn(() => 5);
+            this.lerp = vi.fn().mockReturnThis();
+        }
+    },
+    Euler: class {
+        constructor(x = 0, y = 0, z = 0) {
+            this.x = x;
+            this.y = y;
+            this.z = z;
+        }
+    },
+    Quaternion: class {
+        constructor() {
+            this.slerp = vi.fn();
+        }
+    },
+    Clock: class {
+        constructor() {
+            this.getDelta = vi.fn(() => 0.016);
+            this.getElapsedTime = vi.fn(() => 1.0);
+        }
+    },
 };
 
 global.THREE = mockThree;

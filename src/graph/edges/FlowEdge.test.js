@@ -6,41 +6,58 @@ vi.mock('three', async importOriginal => {
     const actualThree = await importOriginal(); // Import to allow spreading other exports
     return {
         ...actualThree,
-        BufferGeometry: vi.fn(() => ({
-            setAttribute: vi.fn(),
-            dispose: vi.fn(), // Added dispose
-        })),
-        BufferAttribute: vi.fn(),
-        ShaderMaterial: vi.fn(() => ({
-            // Changed from PointsMaterial to ShaderMaterial
-            dispose: vi.fn(), // Added dispose
-            uniforms: {time: {value: 0}, glowIntensity: {value: 0}},
-        })),
-        Points: vi.fn(() => ({
-            position: {copy: vi.fn()},
-            lookAt: vi.fn(),
-            geometry: {
-                attributes: {
-                    position: {array: [], needsUpdate: false},
-                    size: {array: [], needsUpdate: false},
-                    color: {array: [], needsUpdate: false},
-                },
-                dispose: vi.fn(),
-            }, // Mock geometry with attributes
-            material: {uniforms: {time: {value: 0}, glowIntensity: {value: 0}}, dispose: vi.fn()}, // Mock material
-            parent: {remove: vi.fn()}, // Mock parent for removal
-            userData: {},
-        })),
-        Vector3: vi.fn((x = 0, y = 0, z = 0) => ({
-            x,
-            y,
-            z,
-            copy: vi.fn().mockReturnThis(),
-            lerp: vi.fn().mockReturnThis(),
-            lerpVectors: vi.fn().mockReturnThis(), // Added for _getPositionOnCurve
-            distanceTo: vi.fn(() => 5),
-        })),
-        Color: vi.fn(() => ({r: 0, g: 1, b: 0})), // Example color
+        BufferGeometry: class {
+            constructor() {
+                this.setAttribute = vi.fn();
+                this.dispose = vi.fn();
+            }
+        },
+        BufferAttribute: class {
+            constructor() {
+                // Mock implementation
+            }
+        },
+        ShaderMaterial: class {
+            constructor() {
+                this.dispose = vi.fn();
+                this.uniforms = {time: {value: 0}, glowIntensity: {value: 0}};
+            }
+        },
+        Points: class {
+            constructor() {
+                this.position = {copy: vi.fn()};
+                this.lookAt = vi.fn();
+                this.geometry = {
+                    attributes: {
+                        position: {array: [], needsUpdate: false},
+                        size: {array: [], needsUpdate: false},
+                        color: {array: [], needsUpdate: false},
+                    },
+                    dispose: vi.fn(),
+                };
+                this.material = {uniforms: {time: {value: 0}, glowIntensity: {value: 0}}, dispose: vi.fn()};
+                this.parent = {remove: vi.fn()};
+                this.userData = {};
+            }
+        },
+        Vector3: class {
+            constructor(x = 0, y = 0, z = 0) {
+                this.x = x;
+                this.y = y;
+                this.z = z;
+                this.copy = vi.fn().mockReturnThis();
+                this.lerp = vi.fn().mockReturnThis();
+                this.lerpVectors = vi.fn().mockReturnThis();
+                this.distanceTo = vi.fn(() => 5);
+            }
+        },
+        Color: class {
+            constructor(r = 0, g = 1, b = 0) {
+                this.r = r;
+                this.g = g;
+                this.b = b;
+            }
+        },
         AdditiveBlending: 'AdditiveBlendingConstant', // Mock constant
     };
 });
@@ -64,8 +81,7 @@ describe('FlowEdge', () => {
         };
 
         edge = new FlowEdge('flow-edge-1', sourceNode, targetNode, {
-            // flowSpeed: 2.0, // This will be stored in data if needed, but particleSpeed initializes the actual speed property
-            particleSpeed: 2.0, // Use the correct property name for initialization
+            particleSpeed: 2.0,
             particleCount: 20,
             particleSize: 0.1,
             flowColor: 0x00ff00,
@@ -91,11 +107,9 @@ describe('FlowEdge', () => {
     it('should have animation control methods', () => {
         expect(typeof edge.setAnimated).toBe('function');
         expect(typeof edge.setParticleSpeed).toBe('function');
-        // No direct start/stop/pause, it's through setAnimated.
     });
 
     it('should control animation state correctly via setAnimated', () => {
-        // Default is animated: true from constructor data
         expect(edge.data.animated).toBe(true);
         expect(edge.animationFrame).not.toBeNull();
 
@@ -115,10 +129,7 @@ describe('FlowEdge', () => {
     });
 
     it('should handle bidirectional flow via flowDirection in data', () => {
-        // Constructor sets this.flowDirection from data.flowDirection
-        // Test if data.bidirectional (if it were a primary option) translates to flowDirection
-        // The current code uses data.flowDirection (1, -1, or 0 for bidirectional)
-        const biFlowEdge = new FlowEdge('bi-flow', sourceNode, targetNode, {flowDirection: 0}); // 0 for bidirectional
+        const biFlowEdge = new FlowEdge('bi-flow', sourceNode, targetNode, {flowDirection: 0});
         expect(biFlowEdge.flowDirection).toBe(0);
         expect(biFlowEdge.data.flowDirection).toBe(0);
 
@@ -134,17 +145,13 @@ describe('FlowEdge', () => {
     });
 
     it('should call _updateParticles when edge public update is called', () => {
-        // _updateParticles is called by _startAnimation and the public update()
         const updateInternalSpy = vi.spyOn(edge, '_updateParticles');
-        edge.update(); // Call public update method
+        edge.update();
         expect(updateInternalSpy).toHaveBeenCalled();
         updateInternalSpy.mockRestore();
     });
 
     it('should have correct flowDirection property access and modification', () => {
-        // flowDirection is set in constructor from data.flowDirection (default 1 from FlowEdge.js if not provided)
-        // The test case provides `bidirectional: false` which is not directly used for flowDirection.
-        // Default `flowDirection` in `FlowEdge.js` constructor if `data.flowDirection` is undefined is 1.
         expect(edge.flowDirection).toBe(1);
 
         edge.setFlowDirection(-1);
@@ -156,57 +163,16 @@ describe('FlowEdge', () => {
         expect(edge.particles.length).toBeGreaterThan(0);
         const particle = edge.particles[0];
         expect(particle).toHaveProperty('progress');
-        // Initial progress is based on i / particleCount, so it's between 0 and 1.
         expect(particle.progress).toBeGreaterThanOrEqual(0);
     });
 
     it('particle progress should change after animation updates', () => {
-        // This test assumes requestAnimationFrame and timers are handled to observe change.
-        // Mocking requestAnimationFrame to immediately call the callback for simplicity in testing _updateParticles.
-        // We also need to control time via vi.useFakeTimers() for performance.now() if used by _updateParticles.
-
-        // Initial progress of the first particle
         const initialProgress = edge.particles[0].progress;
 
-        // Simulate some time passing and an update cycle
-        // This will depend on how _updateParticles uses time.
-        // If it uses performance.now(), advance timers.
-        // For this test, let's directly call _updateParticles multiple times
-        // as requestAnimationFrame is mocked to run immediately.
-
-        edge.setAnimated(true); // Ensure animation is "running"
-
-        // Call _updateParticles a few times which should be triggered by mocked requestAnimationFrame
-        // However, since _startAnimation uses a closure for animate, spying or direct calls are easier.
-        // Let's call _updateParticles directly for this test to check its effect.
+        edge.setAnimated(true);
         edge._updateParticles();
         edge._updateParticles();
 
         expect(edge.particles[0].progress).not.toBe(initialProgress);
     });
-});
-
-// Mock requestAnimationFrame and cancelAnimationFrame for _startAnimation/_stopAnimation
-// These need to be at the module scope or setup/teardown correctly if per-test.
-// For simplicity, let's make them module-scoped for now if they don't interfere.
-// However, it's better to manage this with setup/teardown if tests conflict.
-
-// Using beforeEach and afterEach to manage timers and animation frame mocks
-beforeEach(() => {
-    vi.useFakeTimers();
-    global.requestAnimationFrame = vi.fn(cb => {
-        // Simulate async by not calling immediately, or call if testing synchronous part of it
-        // cb(); // Call immediately for some tests, or manage with timers.
-        return Date.now(); // Return a mock ID
-    });
-    global.cancelAnimationFrame = vi.fn();
-    global.performance = {now: vi.fn(() => Date.now())}; // Mock performance.now
-});
-
-afterEach(() => {
-    vi.runOnlyPendingTimers();
-    vi.useRealTimers();
-    delete global.requestAnimationFrame;
-    delete global.cancelAnimationFrame;
-    delete global.performance;
 });

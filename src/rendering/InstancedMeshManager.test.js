@@ -1,5 +1,26 @@
+import {beforeEach, describe, expect, it, vi} from 'vitest';
 import {InstancedMeshManager} from './InstancedMeshManager.js';
 import * as THREE from 'three';
+
+// Mock GLTFLoader for testing GLTF loading
+vi.mock('three/examples/jsm/loaders/GLTFLoader.js', () => ({
+    GLTFLoader: class {
+        constructor() {
+            this.loadAsync = vi.fn().mockResolvedValue({
+                scene: {
+                    traverse: callback => {
+                        const mesh = {
+                            isMesh: true,
+                            geometry: new THREE.BoxGeometry(),
+                            material: new THREE.MeshStandardMaterial(),
+                        };
+                        callback(mesh);
+                    },
+                },
+            });
+        }
+    },
+}));
 
 describe('InstancedMeshManager', () => {
     let scene;
@@ -11,12 +32,14 @@ describe('InstancedMeshManager', () => {
     });
 
     afterEach(() => {
-        manager.dispose();
+        if (manager && manager.dispose) {
+            manager.dispose();
+        }
         scene = null;
         manager = null;
     });
 
-    test('should add and remove a sphere node', async () => {
+    it('should add and remove a sphere node', async () => {
         const node = {
             id: 'node1',
             position: new THREE.Vector3(0, 0, 0),
@@ -31,25 +54,7 @@ describe('InstancedMeshManager', () => {
         expect(node.isInstanced).toBe(false);
     });
 
-    // Mock GLTFLoader for testing GLTF loading
-    vi.mock('three/examples/jsm/loaders/GLTFLoader.js', () => ({
-        GLTFLoader: vi.fn().mockImplementation(() => ({
-            loadAsync: vi.fn().mockResolvedValue({
-                scene: {
-                    traverse: callback => {
-                        const mesh = {
-                            isMesh: true,
-                            geometry: new THREE.BoxGeometry(),
-                            material: new THREE.MeshStandardMaterial(),
-                        };
-                        callback(mesh);
-                    },
-                },
-            }),
-        })),
-    }));
-
-    test('should load and add a GLTF node', async () => {
+    it('should load and add a GLTF node', async () => {
         const node = {
             id: 'node2',
             position: new THREE.Vector3(10, 0, 0),
@@ -61,11 +66,10 @@ describe('InstancedMeshManager', () => {
         expect(node.isInstanced).toBe(true);
 
         // Verify that the GLTF loader was called
-        // Verify that the GLTF loader was called
         expect(manager.gltfLoader.loadAsync).toHaveBeenCalledWith('test.gltf');
     });
 
-    test('should update node transform and color', async () => {
+    it('should update node transform and color', async () => {
         const node = {
             id: 'node3',
             position: new THREE.Vector3(0, 0, 0),

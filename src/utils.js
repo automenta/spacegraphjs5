@@ -1,3 +1,4 @@
+// DOM utility functions
 export const $ = (selector, context) => (context || document).querySelector(selector);
 export const $$ = (selector, context) => (context || document).querySelectorAll(selector);
 
@@ -13,21 +14,19 @@ export const Utils = {
             for (const key in source) {
                 const targetValue = target[key];
                 const sourceValue = source[key];
-                if (Utils.isObject(targetValue) && Utils.isObject(sourceValue)) {
-                    Utils.mergeDeep(targetValue, sourceValue);
-                } else {
-                    target[key] = sourceValue;
-                }
+                Utils.isObject(targetValue) && Utils.isObject(sourceValue)
+                    ? Utils.mergeDeep(targetValue, sourceValue)
+                    : target[key] = sourceValue;
             }
         });
         return target;
     },
     toHexColor: numColor => {
         if (typeof numColor === 'string' && numColor.startsWith('#')) {
-            return numColor; // Already a hex string
+            return numColor;
         }
         if (typeof numColor !== 'number' || isNaN(numColor)) {
-            return '#ffffff'; // Default to white for invalid input
+            return '#ffffff';
         }
         const hex = Math.floor(numColor).toString(16).padStart(6, '0');
         return `#${hex}`;
