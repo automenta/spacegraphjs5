@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Graph Generators Demo - SpaceGraphJS</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #0f0f1a;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+
+        #container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            max-width: 400px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 14px;
+            z-index: 100;
+        }
+
+        h3 {
+            margin-top: 0;
+            color: #4CAF50;
+        }
+    </style>
+</head>
+<body>
+<div id="container">
+    <div id="info">
+        <h3>Graph Generators Demo</h3>
+        <p>This demo shows generators that create graphs from data structures:</p>
+        <ul>
+            <li><b>FileSystemGenerator:</b> Creates a graph from a JSON object representing a file directory structure
+            </li>
+            <li><b>ObjectPropertyGenerator:</b> Visualizes a JavaScript object's properties as a graph</li>
+        </ul>
+        <p>Two graphs will be generated: a file system tree on the left and a complex object on the right.</p>
+    </div>
+    <canvas id="webgl-canvas"></canvas>
+    <div id="css3d-container"></div>
+</div>
+
+<script type="module">
+    import {SpaceGraph, FileSystemGenerator, ObjectPropertyGenerator} from '../src/index.js';
+
+    async function init() {
+        const container = document.getElementById('container');
+
+        // Initialize SpaceGraph with ergonomic factory method
+        const space = await SpaceGraph.the(container);
+
+
+        // 1. FileSystemGenerator Demo
+        const fsData = {
+            name: 'ProjectRoot',
+            type: 'directory',
+            children: [
+                {
+                    name: 'src',
+                    type: 'directory',
+                    children: [
+                        {name: 'index.js', type: 'file', size: 1500},
+                        {name: 'utils.js', type: 'file', size: 800},
+                        {
+                            name: 'components',
+                            type: 'directory',
+                            children: [
+                                {name: 'Button.js', type: 'file', size: 500},
+                                {name: 'Card.js', type: 'file', size: 700},
+                            ],
+                        },
+                    ],
+                },
+                {
+                    name: 'docs',
+                    type: 'directory',
+                    children: [{name: 'README.md', type: 'file', size: 2000}],
+                },
+                {name: 'package.json', type: 'file', size: 600},
+            ],
+        };
+        const fsGenerator = new FileSystemGenerator();
+        fsGenerator.generate(fsData, space, {rootPosition: {x: -300, y: 200, z: 0}});
+
+        // 2. ObjectPropertyGenerator Demo
+        const complexObject = {
+            id: 'user123',
+            name: 'Alice Wonderland',
+            email: 'alice@example.com',
+            isActive: true,
+            roles: ['admin', 'editor', 'viewer'],
+            preferences: {
+                theme: 'dark',
+                notifications: {
+                    email: true,
+                    sms: false,
+                    push: {enabled: true, sound: 'default'},
+                },
+                language: 'en-US',
+            },
+            address: {
+                street: '123 Main St',
+                city: 'Anytown',
+                zip: '12345',
+                countryDetails: {name: 'Wonderland', code: 'WL'},
+            },
+            metadata: null,
+            lastLogin: new Date().toISOString(),
+            friends: [
+                {id: 'user456', name: 'Bob'},
+                {id: 'user789', name: 'Charlie'},
+            ],
+        };
+        const objGenerator = new ObjectPropertyGenerator();
+        objGenerator.generate(complexObject, space, {
+            rootPosition: {x: 300, y: 200, z: -50},
+            maxDepth: 4,
+        });
+
+        setTimeout(() => {
+            space.plugins
+                .getPlugin('LayoutPlugin')
+                ?.applyLayout('force', {repulsion: 4000, centerStrength: 0.001});
+
+            console.log('FileSystem (left) and Object (right) graphs generated.');
+        }, 500);
+
+        // Start the animation loop
+        space.animate();
+    }
+
+    // Initialize when the page loads
+    document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>

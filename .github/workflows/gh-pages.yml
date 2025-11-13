@@ -1,0 +1,62 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main # Trigger deployment on pushes to the main branch
+
+# Specifies permissions for the GITHUB_TOKEN for GitHub Pages deployment
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
+# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  # Build job
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20' # Or your project's node version
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build demo for GitHub Pages
+        run: npm run build:demo # This script outputs to dist-demo
+
+      - name: Verify build output
+        run: ls -RF dist-demo/ && echo "--- Content of dist-demo/index.html ---" && cat dist-demo/index.html
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./dist-demo # Path to the directory to upload
+
+  # Deploy job
+  deploy:
+    needs: build # Depends on the build job completing successfully
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }} # Output the deployed page URL
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+        # No 'with' section needed if the artifact was uploaded with default name by upload-pages-artifact
+        # and if deploying to the root of the GitHub Pages site.
+        # If deploying to a subdirectory (e.g., /project-name/), additional configuration might be needed
+        # or ensure your site's asset paths are relative.
+        # The current setup with relative paths in docs/ should work well.

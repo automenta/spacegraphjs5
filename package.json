@@ -1,0 +1,102 @@
+{
+  "name": "spacegraph-zui",
+  "version": "0.1.0",
+  "description": "A general-purpose, extensible JavaScript library for creating Zooming User Interfaces (ZUI) with 2D and 3D visualizations.",
+  "main": "dist/spacegraph.cjs.js",
+  "module": "dist/spacegraph.es.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/spacegraph.es.js",
+      "require": "./dist/spacegraph.cjs.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "prepare": "husky",
+    "build": "tsc --emitDeclarationOnly --outDir dist --project tsconfig.json && vite build --config vite.lib.config.js",
+    "build:demo": "vite build --outDir dist-demo",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage",
+    "docs:build": "jsdoc -c jsdoc.conf.json",
+    "docs:view": "serve ./docs/api -l 8080",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write \"**/*.{js,json,md,html,css}\"",
+    "start": "npx vite dev",
+    "build:watch": "vite build --watch",
+    "build:gh-pages": "mkdir -p docs && cp index.html docs/index.html && echo '<h1>Test Page</h1><p>This is docs/test.html</p>' > docs/test.html && echo 'Content of root index.html that will be copied:' && cat index.html"
+  },
+  "author": "SpaceGraph Contributors",
+  "license": "MIT",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TTime/spacegraphjs.git"
+  },
+  "keywords": [
+    "zui",
+    "zoomable interface",
+    "graph",
+    "graph visualization",
+    "data visualization",
+    "2d",
+    "3d",
+    "webgl",
+    "threejs",
+    "gsap",
+    "postprocessing",
+    "javascript",
+    "library"
+  ],
+  "bugs": {
+    "url": "https://github.com/TTime/spacegraphjs/issues"
+  },
+  "homepage": "https://github.com/TTime/spacegraphjs#readme",
+  "peerDependencies": {
+    "gsap": "^3.13.0",
+    "postprocessing": "^6.37.4",
+    "three": "^0.177.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.28.5",
+    "@babel/preset-env": "^7.28.5",
+    "@eslint/js": "^9.39.1",
+    "@rollup/plugin-terser": "^0.4.4",
+    "@types/node": "^24.10.1",
+    "@vitest/coverage-v8": "^4.0.8",
+    "chart.js": "^4.5.1",
+    "docdash": "^2.0.2",
+    "eslint": "^9.39.1",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.4",
+    "globals": "^16.5.0",
+    "gsap": "^3.13.0",
+    "husky": "^9.1.7",
+    "jsdoc": "^4.0.5",
+    "jsdom": "^27.2.0",
+    "lint-staged": "^16.2.6",
+    "postprocessing": "^6.38.0",
+    "prettier": "^3.6.2",
+    "serve": "^14.2.5",
+    "three": "^0.181.1",
+    "typescript": "^5.9.3",
+    "vite": "^7.2.2",
+    "vitest": "^4.0.8"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx,json,css,scss,md}": [
+      "prettier --write"
+    ],
+    "*.{js,jsx,ts,tsx}": [
+      "eslint --fix"
+    ]
+  }
+}

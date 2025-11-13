@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>SpaceGraphJS Demos</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #0f0f1a;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+
+        h1 {
+            color: #4CAF50;
+            text-align: center;
+        }
+
+        .demos-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .demo-card {
+            background: rgba(30, 30, 46, 0.8);
+            border-radius: 8px;
+            padding: 20px;
+            border: 1px solid #4CAF50;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .demo-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+            background: rgba(40, 40, 60, 0.9);
+        }
+
+        .demo-card h3 {
+            margin-top: 0;
+            color: #64FFB5;
+        }
+
+        .demo-card a {
+            display: block;
+            background: #4CAF50;
+            color: white;
+            text-decoration: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            text-align: center;
+            margin-top: 15px;
+            font-weight: bold;
+        }
+
+        .demo-card a:hover {
+            background: #45a049;
+        }
+    </style>
+</head>
+<body>
+<h1>SpaceGraphJS Demos</h1>
+<div class="demos-grid">
+    <div class="demo-card">
+        <h3>Node Types Demo</h3>
+        <p>Shows different types of nodes in SpaceGraphJS: ShapeNode, NoteNode/HtmlNode, ImageNode, VideoNode,
+            IFrameNode, and GroupNode.</p>
+        <a href="./demos/node-types-demo.html">View Demo</a>
+    </div>
+
+    <div class="demo-card">
+        <h3>Advanced Camera Demo</h3>
+        <p>Experience next-generation camera capabilities including intelligent auto-zoom, smooth rotation controls,
+            peek-around-corners functionality, and cinematic camera modes.</p>
+        <a href="./demos/advanced-camera-demo.html">View Demo</a>
+    </div>
+
+    <div class="demo-card">
+        <h3>Performance Demo</h3>
+        <p>Performance optimization features with large datasets, instancing, culling, LOD, and web workers.</p>
+        <a href="./demos/performance-demo.html">View Demo</a>
+    </div>
+
+    <div class="demo-card">
+        <h3>Graph Generators Demo</h3>
+        <p>Shows generators that create graphs from data structures: FileSystemGenerator and
+            ObjectPropertyGenerator.</p>
+        <a href="./demos/graph-generators-demo.html">View Demo</a>
+    </div>
+
+    <div class="demo-card">
+        <h3>Advanced Edges Demo</h3>
+        <p>Showcasing a wide variety of edge types, styles, and advanced functionalities.</p>
+        <a href="./demos/advanced-edges-demo.html">View Demo</a>
+    </div>
+
+    <div class="demo-card">
+        <h3>Advanced Layouts Demo</h3>
+        <p>Demonstrates next-generation layout capabilities including constraint-based positioning, nested container
+            layouts, adaptive layout selection, and inter-layout connectivity.</p>
+        <a href="./demos/advanced-layouts-demo.html">View Demo</a>
+    </div>
+
+    <div class="demo-card">
+        <h3>Advanced Widgets Demo</h3>
+        <p>Showcasing nodes with interactive UI elements, dynamic content, and procedurally generated visuals.</p>
+        <a href="./demos/advanced-widgets-demo.html">View Demo</a>
+    </div>
+
+    <div class="demo-card">
+        <h3>All Features Demo</h3>
+        <p>Original demonstration graph showcasing a variety of node types, edge styles, and interactions available in
+            SpaceGraphJS.</p>
+        <a href="./demos/all-features-demo.html">View Demo</a>
+    </div>
+
+    <div class="demo-card">
+        <h3>Camera Modes Info Demo</h3>
+        <p>SpaceGraph offers various camera modes to enhance navigation and interaction within the 3D space.</p>
+        <a href="./demos/camera-modes-info-demo.html">View Demo</a>
+    </div>
+
+    <div class="demo-card">
+        <h3>Fractal Zoom Demo</h3>
+        <p>Infinite zoom with level-of-detail management and content adaptation.</p>
+        <a href="./demos/fractal-zoom-demo.html">View Demo</a>
+    </div>
+
+    <div class="demo-card">
+        <h3>MetaWidgets Demo</h3>
+        <p>Demonstrating the metawidget system for creating composite interfaces and dashboards.</p>
+        <a href="./demos/meta-widgets-demo.html">View Demo</a>
+    </div>
+
+    <div class="demo-card">
+        <h3>New Node Types Demo</h3>
+        <p>Demonstrates recently added specialized node types that are currently visual/functional stubs.</p>
+        <a href="./demos/new-node-types-demo.html">View Demo</a>
+    </div>
+
+    <div class="demo-card">
+        <h3>Basic Demo - Ergonomic API</h3>
+        <p>Demonstrates the ergonomic SpaceGraph.the() async factory method for simplified initialization.</p>
+        <a href="./demos/basic-demo.html">View Demo</a>
+    </div>
+</div>
+</body>
+</html>

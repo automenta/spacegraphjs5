@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Basic Demo - SpaceGraphJS</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #0f0f1a;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+
+        #container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            max-width: 400px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 14px;
+            z-index: 100;
+        }
+
+        h3 {
+            margin-top: 0;
+            color: #4CAF50;
+        }
+    </style>
+</head>
+<body>
+<div id="container">
+    <div id="info">
+        <h3>Basic Demo - Recommended API Pattern</h3>
+        <p>RECOMMENDED CORE LIBRARY API: SpaceGraph should implement an ergonomic async static factory method:</p>
+        <ul>
+            <li><code>SpaceGraph.the(container, options)</code> - should be added to core library</li>
+            <li>Properly handles async initialization that constructors cannot</li>
+            <li>Starts animation automatically for immediate visual feedback</li>
+            <li>Reduces boilerplate from 4+ lines to 1 line</li>
+        </ul>
+        <p>HOW TO USE: Once implemented in the core SpaceGraph class, developers would use:</p>
+        <code>const space = await SpaceGraph.the(container);</code>
+    </div>
+    <canvas id="webgl-canvas"></canvas>
+    <div id="css3d-container"></div>
+</div>
+
+<script type="module">
+    import {SpaceGraph} from '../src/index.js';
+
+    async function init() {
+        const space = await SpaceGraph.the(document.getElementById('container'));
+
+        // Create a few basic elements to demonstrate the setup
+        const node1 = space.createNode({
+            id: 'basic-node-1',
+            type: 'shape',
+            position: {x: -100, y: 0, z: 0},
+            data: {
+                label: 'Basic Node 1',
+                shape: 'sphere',
+                size: 40,
+                color: 0x4a9eff
+            },
+            mass: 1.0
+        });
+
+        const node2 = space.createNode({
+            id: 'basic-node-2',
+            type: 'shape',
+            position: {x: 100, y: 0, z: 0},
+            data: {
+                label: 'Basic Node 2',
+                shape: 'box',
+                size: 40,
+                color: 0xff6b6b
+            },
+            mass: 1.0
+        });
+
+        space.addEdge(node1, node2, {
+            label: 'Basic Connection',
+            color: 0x888888,
+            thickness: 1
+        });
+
+        // // Center the view on the created elements
+        // setTimeout(() => {
+        //     space.centerView({x: 0, y: 0, z: 0}, 500);
+        // }, 300);
+    }
+
+    // Initialize when the page loads
+    document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>

@@ -1,0 +1,461 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Advanced Widgets Demo - SpaceGraphJS</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #0f0f1a;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+
+        #container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            max-width: 400px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 14px;
+            z-index: 100;
+        }
+
+        h3 {
+            margin-top: 0;
+            color: #4CAF50;
+        }
+    </style>
+</head>
+<body>
+<div id="container">
+    <div id="info">
+        <h3>Interactive & Procedural Nodes Demo</h3>
+        <p>Showcasing nodes with interactive UI elements, dynamic content, and procedurally generated visuals:</p>
+        <ul>
+            <li><strong>Control Panel Node:</strong> Interactive sliders, buttons, and controls</li>
+            <li><strong>Progress Node:</strong> Various progress indicators (bars, circles, gauges, steps)</li>
+            <li><strong>Canvas Node:</strong> Drawing canvas with multiple tools</li>
+            <li><strong>Procedural Shape Node:</strong> Generated fractal and organic shapes</li>
+            <li><strong>Text Mesh Node:</strong> 3D text with advanced typography</li>
+            <li><strong>Flow Edge:</strong> Animated particle flows</li>
+            <li><strong>Spring Edge:</strong> Physics-based spring connections</li>
+            <li><strong>Bezier Edge:</strong> Curved connections with control points</li>
+        </ul>
+        <p><em>Interact with the control panels and try the different drawing tools!</em></p>
+    </div>
+    <canvas id="webgl-canvas"></canvas>
+    <div id="css3d-container"></div>
+</div>
+
+<script type="module">
+    import {SpaceGraph} from '../src/index.js';
+
+    async function init() {
+        const container = document.getElementById('container');
+
+        // Initialize SpaceGraph with ergonomic factory method
+        const space = await SpaceGraph.the(container);
+
+        // Clear any existing content
+        space.importGraphFromJSON({nodes: [], edges: []});
+
+        // Central hub node
+        const hubNode = space.createNode({
+            id: 'hub',
+            type: 'text',
+            position: {x: 0, y: 0, z: 0},
+            data: {
+                text: 'Advanced\\nWidgets',
+                fontSize: 24,
+                height: 8,
+                color: 0x4a9eff,
+                bevelEnabled: true,
+                align: 'center',
+                animated: true,
+                label: 'Advanced Widgets'
+            }
+        });
+
+        // Control Panel Node with various controls
+        const controlPanel = space.createNode({
+            id: 'control-panel',
+            type: 'html',
+            position: {x: -300, y: 150, z: 0},
+            data: {
+                label: 'System Controls',
+                content: `
+                    <div style="background: #2c3e50; padding: 15px; border-radius: 8px; color: white; font-family: Arial, sans-serif; height: 100%;">
+                        <h3 style="margin-top: 0; color: #3498db;">System Controls</h3>
+
+                        <div style="margin-bottom: 10px;">
+                            <label style="display: block; margin-bottom: 5px;">Volume</label>
+                            <input type="range" id="volume" min="0" max="100" value="75" style="width: 100%;">
+                            <span id="volume-value">75%</span>
+                        </div>
+
+                        <div style="margin-bottom: 10px;">
+                            <label style="display: block; margin-bottom: 5px;">Quality</label>
+                            <select id="quality" style="width: 100%; padding: 5px;">
+                                <option value="low">Low</option>
+                                <option value="medium" selected>Medium</option>
+                                <option value="high">High</option>
+                                <option value="ultra">Ultra</option>
+                            </select>
+                        </div>
+
+                        <div style="margin-bottom: 10px;">
+                            <label style="display: flex; align-items: center;">
+                                <input type="checkbox" id="enabled" checked style="margin-right: 8px;">
+                                Enable Effects
+                            </label>
+                        </div>
+
+                        <div style="margin-bottom: 10px;">
+                            <button id="apply" style="width: 100%; padding: 8px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer;">Apply</button>
+                        </div>
+                    </div>
+                `,
+                width: 280,
+                height: 250,
+            }
+        });
+
+        // Progress indicators showcase
+        const progressBar = space.createNode({
+            id: 'progress-bar',
+            type: 'html',
+            position: {x: 300, y: 150, z: 0},
+            data: {
+                label: 'Loading Progress',
+                content: `
+                    <div style="background: #2c3e50; padding: 10px; border-radius: 5px; color: white;">
+                        <h4 style="margin: 0 0 10px 0;">Loading Progress</h4>
+                        <div style="background: #34495e; height: 20px; border-radius: 10px; overflow: hidden;">
+                            <div id="progress-bar-fill" style="height: 100%; width: 65%; background: linear-gradient(to right, #00ff88, #00cc6a); border-radius: 10px;"></div>
+                        </div>
+                    </div>
+                `,
+                width: 200,
+                height: 80,
+            }
+        });
+
+        const progressCircle = space.createNode({
+            id: 'progress-circle',
+            type: 'html',
+            position: {x: 450, y: 150, z: 0},
+            data: {
+                label: 'CPU Usage',
+                content: `
+                    <div style="background: #2c3e50; padding: 15px; border-radius: 5px; color: white; text-align: center;">
+                        <h4 style="margin: 0 0 10px 0;">CPU Usage</h4>
+                        <div style="position: relative; width: 100px; height: 100px; margin: 0 auto;">
+                            <svg width="100" height="100" viewBox="0 0 100 100">
+                                <circle cx="50" cy="50" r="45" fill="none" stroke="#34495e" stroke-width="8"/>
+                                <circle id="progress-circle-fill" cx="50" cy="50" r="45" fill="none" stroke="#ff6b35" stroke-width="8" stroke-linecap="round"
+                                        stroke-dasharray="283" stroke-dashoffset="106" transform="rotate(-90 50 50)"/>
+                            </svg>
+                            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 18px; font-weight: bold;">45%</div>
+                        </div>
+                    </div>
+                `,
+                width: 120,
+                height: 120,
+            }
+        });
+
+        const progressGauge = space.createNode({
+            id: 'progress-gauge',
+            type: 'html',
+            position: {x: 600, y: 150, z: 0},
+            data: {
+                label: 'Temperature',
+                content: `
+                    <div style="background: #2c3e50; padding: 15px; border-radius: 5px; color: white; text-align: center;">
+                        <h4 style="margin: 0 0 10px 0;">Temperature</h4>
+                        <div style="position: relative; width: 140px; height: 100px;">
+                            <svg width="140" height="100" viewBox="0 0 140 100">
+                                <path d="M 20 90 A 50 50 0 0 1 120 90" fill="none" stroke="#34495e" stroke-width="15"/>
+                                <path id="progress-gauge-fill" d="M 20 90 A 50 50 0 0 1 120 90" fill="none" stroke="#ff4757" stroke-width="15" stroke-linecap="round"/>
+                            </svg>
+                            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 18px; font-weight: bold;">72%</div>
+                        </div>
+                    </div>
+                `,
+                width: 140,
+                height: 100,
+            }
+        });
+
+        // Canvas drawing node
+        const canvas = space.createNode({
+            id: 'canvas',
+            type: 'html',
+            position: {x: -400, y: -150, z: 0},
+            data: {
+                label: 'Drawing Canvas',
+                content: `
+                    <div style="background: #0f0f23; padding: 10px; border-radius: 5px; height: 100%;">
+                        <h4 style="margin: 0 0 10px 0; color: white;">Drawing Canvas</h4>
+                        <canvas id="drawing-canvas" width="300" height="180" style="border: 1px solid #34495e; background: #0a0a15; width: 100%; height: 180px;"></canvas>
+                        <div style="margin-top: 10px; display: flex; gap: 5px;">
+                            <button id="pen-tool" style="flex: 1; padding: 5px; background: #3498db; color: white; border: none; border-radius: 3px; cursor: pointer;">Pen</button>
+                            <button id="eraser-tool" style="flex: 1; padding: 5px; background: #e74c3c; color: white; border: none; border-radius: 3px; cursor: pointer;">Eraser</button>
+                            <button id="clear-canvas" style="flex: 1; padding: 5px; background: #95a5a6; color: white; border: none; border-radius: 3px; cursor: pointer;">Clear</button>
+                        </div>
+                    </div>
+                `,
+                width: 320,
+                height: 250,
+            }
+        });
+
+        // Procedural shape showcase
+        const fractalShape = space.createNode({
+            id: 'fractal',
+            type: 'shape',
+            position: {x: 200, y: -150, z: 0},
+            data: {
+                label: 'Fractal Shape',
+                shape: 'sphere',
+                size: 60,
+                color: 0x8e44ad,
+            }
+        });
+
+        const organicShape = space.createNode({
+            id: 'organic',
+            type: 'shape',
+            position: {x: 350, y: -150, z: 0},
+            data: {
+                label: 'Organic Shape',
+                shape: 'box',
+                size: 60,
+                color: 0x27ae60,
+            }
+        });
+
+        const crystalShape = space.createNode({
+            id: 'crystal',
+            type: 'shape',
+            position: {x: 500, y: -150, z: 0},
+            data: {
+                label: 'Crystal Shape',
+                shape: 'cone',
+                size: 60,
+                color: 0x3498db,
+            }
+        });
+
+        // Text mesh nodes with different styles
+        const titleText = space.createNode({
+            id: 'title',
+            type: 'text',
+            position: {x: -150, y: 280, z: 0},
+            data: {
+                text: 'Interactive\\nWidgets',
+                fontSize: 18,
+                height: 6,
+                color: 0xe74c3c,
+                bevelEnabled: true,
+                align: 'center',
+                label: 'Interactive Widgets'
+            }
+        });
+
+        const subtitleText = space.createNode({
+            id: 'subtitle',
+            type: 'text',
+            position: {x: 150, y: 280, z: 0},
+            data: {
+                text: 'Procedural\\nShapes',
+                fontSize: 18,
+                height: 6,
+                color: 0xf39c12,
+                bevelEnabled: true,
+                align: 'center',
+                label: 'Procedural Shapes'
+            }
+        });
+
+        // Create advanced edge connections
+        space.addEdge(hubNode, controlPanel, {
+            type: 'curved',
+            curvature: 0.3,
+            color: 0x4a9eff,
+            thickness: 2,
+            label: 'Flow'
+        });
+
+        space.addEdge(hubNode, canvas, {
+            type: 'curved',
+            curvature: -0.2,
+            color: 0x9b59b6,
+            thickness: 2,
+        });
+
+        space.addEdge(fractalShape, organicShape, {
+            type: 'curved',
+            curvature: 0.2,
+            color: 0x27ae60,
+            thickness: 3,
+        });
+
+        space.addEdge(organicShape, crystalShape, {
+            type: 'curved',
+            curvature: -0.2,
+            color: 0x3498db,
+            thickness: 3,
+        });
+
+        space.addEdge(progressBar, progressCircle, {
+            type: 'curved',
+            curvature: 0.1,
+            color: 0x00ff88,
+            thickness: 2,
+        });
+
+        space.addEdge(progressCircle, progressGauge, {
+            type: 'curved',
+            curvature: -0.1,
+            color: 0xff6b35,
+            thickness: 2,
+        });
+
+        space.addEdge(titleText, controlPanel, {
+            type: 'curved',
+            curvature: 0.3,
+            color: 0xe74c3c,
+            thickness: 2,
+            label: 'Controls',
+        });
+
+        space.addEdge(subtitleText, fractalShape, {
+            type: 'curved',
+            curvature: 0.3,
+            color: 0xf39c12,
+            thickness: 2,
+            label: 'Shapes',
+        });
+
+        // Set up event listeners for interactive features
+        setTimeout(() => {
+            const volumeSlider = document.getElementById('volume');
+            const volumeValue = document.getElementById('volume-value');
+            const qualitySelect = document.getElementById('quality');
+            const progressBarFill = document.getElementById('progress-bar-fill');
+
+            if (volumeSlider && volumeValue) {
+                volumeSlider.addEventListener('input', e => {
+                    const value = e.target.value;
+                    volumeValue.textContent = value + '%';
+                    // Update progress bar based on volume control
+                    if (progressBarFill) {
+                        progressBarFill.style.width = value + '%';
+                    }
+                    console.log(`Volume changed to: ${value}%`);
+                });
+            }
+
+            if (qualitySelect) {
+                qualitySelect.addEventListener('change', e => {
+                    console.log(`Quality changed to: ${e.target.value}`);
+                    // Update fractal complexity based on quality setting
+                    const complexityMap = {low: 2, medium: 3, high: 4, ultra: 5};
+                    console.log(`Fractal complexity set to: ${complexityMap[e.target.value] || 3}`);
+                });
+            }
+
+            // Setup canvas drawing functionality
+            const canvasElement = document.getElementById('drawing-canvas');
+            if (canvasElement) {
+                const ctx = canvasElement.getContext('2d');
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 2;
+                ctx.lineCap = 'round';
+
+                let isDrawing = false;
+                let lastX = 0;
+                let lastY = 0;
+
+                canvasElement.addEventListener('mousedown', e => {
+                    isDrawing = true;
+                    [lastX, lastY] = [e.offsetX, e.offsetY];
+                });
+
+                canvasElement.addEventListener('mousemove', e => {
+                    if (!isDrawing) return;
+                    ctx.beginPath();
+                    ctx.moveTo(lastX, lastY);
+                    ctx.lineTo(e.offsetX, e.offsetY);
+                    ctx.stroke();
+                    [lastX, lastY] = [e.offsetX, e.offsetY];
+                });
+
+                canvasElement.addEventListener('mouseup', () => isDrawing = false);
+                canvasElement.addEventListener('mouseout', () => isDrawing = false);
+
+                document.getElementById('clear-canvas')?.addEventListener('click', () => {
+                    ctx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+                });
+
+                document.getElementById('pen-tool')?.addEventListener('click', () => {
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 2;
+                });
+
+                document.getElementById('eraser-tool')?.addEventListener('click', () => {
+                    ctx.strokeStyle = '#0a0a15';
+                    ctx.lineWidth = 10;
+                });
+            }
+        }, 100);
+
+        // Animate progress values
+        let animationTime = 0;
+        const animateProgress = () => {
+            animationTime += 0.016; // ~60fps
+
+            // Animate different progress indicators
+            const waveValue = 50 + Math.sin(animationTime * 0.5) * 30;
+            const pulseValue = 50 + Math.sin(animationTime * 0.8) * 40;
+
+            const progressCircleFill = document.getElementById('progress-circle-fill');
+            if (progressCircleFill) {
+                const progress = Math.max(0, Math.min(100, waveValue));
+                const circumference = 283; // 2 * π * r (r=45)
+                const offset = circumference - (progress / 100) * circumference;
+                progressCircleFill.style.strokeDashoffset = offset;
+            }
+
+            requestAnimationFrame(animateProgress);
+        };
+        animateProgress();
+
+        // Center the view on the hub
+        setTimeout(() => {
+            space.centerView({x: 0, y: 0, z: 0}, 1000);
+        }, 100);
+
+        // Start the animation loop
+        space.animate();
+    }
+
+    // Initialize when the page loads
+    document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
