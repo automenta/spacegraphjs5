@@ -1,5 +1,10 @@
+// stdlib imports
+
+// third-party imports
 import * as THREE from 'three';
 import {gsap} from 'gsap';
+
+// local imports
 import {CAMERA_MODES} from './Camera.js';
 
 export class AdvancedCameraControls {
