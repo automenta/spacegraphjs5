@@ -53,9 +53,9 @@ export class NodePlugin extends Plugin {
             ['default', ShapeNode]
         ];
         
-        nodeTypes.forEach(([typeName, nodeClass]) =>
-            this.nodeFactory.registerType(typeName, nodeClass)
-        );
+        for (const [typeName, nodeClass] of nodeTypes) {
+            this.nodeFactory.registerType(typeName, nodeClass);
+        }
     }
 
     getName() {
@@ -133,15 +133,19 @@ export class NodePlugin extends Plugin {
     }
 
     update() {
-        this.nodes.forEach(node => {
-            node.isInstanced && this.instancedMeshManager && this.instancedMeshManager.updateNode(node);
+        for (const node of this.nodes.values()) {
+            if (node.isInstanced && this.instancedMeshManager) {
+                this.instancedMeshManager.updateNode(node);
+            }
             node.update?.(this.space);
-        });
+        }
     }
 
     dispose() {
         super.dispose();
-        this.nodes.forEach(node => node.dispose());
+        for (const node of this.nodes.values()) {
+            node.dispose();
+        }
         this.nodes.clear();
     }
 }

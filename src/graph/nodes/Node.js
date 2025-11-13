@@ -1,7 +1,4 @@
-// stdlib imports
 import * as THREE from 'three';
-
-// local imports
 import {Utils} from '../../utils.js';
 import {GRAPH_CONSTANTS} from '../constants.js';
 
@@ -17,7 +14,11 @@ export class Node {
     isPinned = false;
 
     constructor(id, position = {x: 0, y: 0, z: 0}, data = {}, mass = 1.0) {
-        this.id = id ?? Utils.generateId('node');
+        if (!id && id !== 0) {
+            throw new TypeError('Node requires a valid id');
+        }
+        
+        this.id = id;
         this.setPosition(position);
         this.data = Utils.mergeDeep({}, this.getDefaultData(), data);
         this.mass = Math.max(0.1, mass);
@@ -31,18 +32,22 @@ export class Node {
     update(_space) {}
 
     dispose() {
-        this.mesh?.geometry?.dispose();
-        this.mesh?.material?.dispose();
-        this.mesh?.parent?.remove(this.mesh);
-        this.cssObject?.element?.remove();
-        this.cssObject?.parent?.remove(this.cssObject);
-        this.labelObject?.element?.remove();
-        this.labelObject?.parent?.remove(this.labelObject);
-        
-        this.space = null;
-        this.mesh = null;
-        this.cssObject = null;
-        this.labelObject = null;
+        try {
+            this.mesh?.geometry?.dispose();
+            this.mesh?.material?.dispose();
+            this.mesh?.parent?.remove(this.mesh);
+            this.cssObject?.element?.remove();
+            this.cssObject?.parent?.remove(this.cssObject);
+            this.labelObject?.element?.remove();
+            this.labelObject?.parent?.remove(this.labelObject);
+            
+            this.space = null;
+            this.mesh = null;
+            this.cssObject = null;
+            this.labelObject = null;
+        } catch (error) {
+            console.error(`Error disposing node ${this.id}:`, error);
+        }
     }
 
     getBoundingSphereRadius() {
@@ -52,17 +57,25 @@ export class Node {
     setSelectedStyle(_selected) {}
 
     setPosition(pos, y, z) {
-        const {x, _y, _z} = typeof pos === 'object' && pos !== null ? pos : {x: pos, _y: y, _z: z};
-        const finalY = _y ?? 0;
-        const finalZ = _z ?? 0;
+        let x, finalY, finalZ;
+        
+        if (typeof pos === 'object' && pos !== null) {
+            ({x, y: finalY = 0, z: finalZ = 0} = pos);
+        } else {
+            x = pos;
+            finalY = y ?? 0;
+            finalZ = z ?? 0;
+        }
 
         if (![x, finalY, finalZ].every(isFinite)) {
-            console.warn(`BaseNode.setPosition: Attempted to set invalid position for node ${this.id}:`, {
-                x, y: finalY, z: finalZ
-            });
-            return;
+            throw new TypeError(`Invalid position values for node ${this.id}: x=${x}, y=${finalY}, z=${finalZ}`);
         }
+        
         this.position.set(x, finalY, finalZ);
+    }
+
+    getPosition() {
+        return this.position.clone();
     }
 
     startDrag() {
@@ -70,10 +83,27 @@ export class Node {
     }
 
     drag(newPosition) {
-        this.setPosition(newPosition.x, newPosition.y, newPosition.z);
+        this.setPosition(newPosition);
     }
 
     endDrag() {
         this.space?.emit('graph:node:dragend', {node: this});
+    }
+
+    setData(key, value) {
+        if (typeof key === 'object' && key !== null) {
+            this.data = Utils.mergeDeep({}, this.data, key);
+        } else {
+            this.data[key] = value;
+        }
+    }
+
+    getData(key) {
+        return key ? this.data[key] : this.data;
+    }
+
+    togglePin() {
+        this.isPinned = !this.isPinned;
+        this.data.isPinned = this.isPinned;
     }
 }

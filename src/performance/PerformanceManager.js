@@ -64,22 +64,14 @@ export class PerformanceManager {
         this._bindEvents();
     }
 
-    /**
-     * Initialize performance manager with rendering plugin
-     */
     init(renderingPlugin) {
         this.renderingPlugin = renderingPlugin;
         this.instanceManager.init(renderingPlugin);
         this.cullingManager.init(renderingPlugin);
         this.lodManager.init(renderingPlugin);
         this.memoryManager.init();
-
-        // console.log('PerformanceManager initialized');
     }
 
-    /**
-     * Bind to relevant events
-     */
     _bindEvents() {
         this.space.on('node:added', this._onNodeAdded.bind(this));
         this.space.on('node:removed', this._onNodeRemoved.bind(this));
@@ -88,9 +80,6 @@ export class PerformanceManager {
         this.space.on('camera:changed', this._onCameraChanged.bind(this));
     }
 
-    /**
-     * Handle node addition
-     */
     _onNodeAdded(nodeId, node) {
         this.stats.totalObjects++;
 
@@ -103,9 +92,6 @@ export class PerformanceManager {
         }
     }
 
-    /**
-     * Handle node removal
-     */
     _onNodeRemoved(nodeId, node) {
         this.stats.totalObjects--;
 
@@ -118,9 +104,6 @@ export class PerformanceManager {
         }
     }
 
-    /**
-     * Handle edge addition
-     */
     _onEdgeAdded(edgeId, edge) {
         this.stats.totalObjects++;
 
@@ -133,9 +116,6 @@ export class PerformanceManager {
         }
     }
 
-    /**
-     * Handle edge removal
-     */
     _onEdgeRemoved(edgeId, edge) {
         this.stats.totalObjects--;
 
@@ -148,9 +128,6 @@ export class PerformanceManager {
         }
     }
 
-    /**
-     * Handle camera changes for culling and LOD updates
-     */
     _onCameraChanged(data) {
         if (this.config.enableCulling) {
             this.cullingManager.updateCulling();
@@ -161,18 +138,13 @@ export class PerformanceManager {
         }
     }
 
-    /**
-     * Main update loop - should be called every frame
-     */
     update() {
         const currentTime = performance.now();
         const frameTime = currentTime - this.lastFrameTime;
         this.lastFrameTime = currentTime;
 
-        // Update frame time statistics
         this._updateFrameStats(frameTime);
 
-        // Update performance systems
         if (this.config.enableCulling) {
             this.cullingManager.update();
         }
@@ -185,13 +157,9 @@ export class PerformanceManager {
             this.memoryManager.update();
         }
 
-        // Update statistics
         this._updateStats();
     }
 
-    /**
-     * Update frame time statistics
-     */
     _updateFrameStats(frameTime) {
         this.stats.frameTime = frameTime;
         this.frameTimeHistory.push(frameTime);
@@ -200,14 +168,10 @@ export class PerformanceManager {
             this.frameTimeHistory.shift();
         }
 
-        // Calculate average frame time
         const total = this.frameTimeHistory.reduce((sum, time) => sum + time, 0);
         this.stats.avgFrameTime = total / this.frameTimeHistory.length;
     }
 
-    /**
-     * Update performance statistics
-     */
     _updateStats() {
         this.stats.visibleObjects = this.cullingManager.getVisibleCount();
         this.stats.instancedObjects = this.instanceManager.getInstancedCount();
@@ -215,16 +179,10 @@ export class PerformanceManager {
         this.stats.memoryUsage = this.memoryManager.getMemoryUsage();
     }
 
-    /**
-     * Get current performance statistics
-     */
     getStats() {
         return {...this.stats};
     }
 
-    /**
-     * Get detailed performance report
-     */
     getPerformanceReport() {
         return {
             stats: this.getStats(),
@@ -236,14 +194,10 @@ export class PerformanceManager {
         };
     }
 
-    /**
-     * Update performance configuration
-     */
     updateConfig(newConfig) {
         const oldConfig = {...this.config};
         this.config = {...this.config, ...newConfig};
 
-        // Notify subsystems of config changes
         if (oldConfig.enableInstancing !== this.config.enableInstancing) {
             this.instanceManager.setEnabled(this.config.enableInstancing);
         }
@@ -257,18 +211,12 @@ export class PerformanceManager {
         }
     }
 
-    /**
-     * Optimize performance based on current conditions
-     */
     optimizePerformance() {
         const stats = this.getStats();
         const avgFrameTime = stats.avgFrameTime;
-        const targetFrameTime = 16.67; // 60 FPS
+        const targetFrameTime = 16.67;
 
         if (avgFrameTime > targetFrameTime * 1.5) {
-            // Performance is poor, enable more aggressive optimizations
-            // console.log('Performance degraded, enabling aggressive optimizations');
-
             this.updateConfig({
                 enableInstancing: true,
                 enableCulling: true,
@@ -276,10 +224,8 @@ export class PerformanceManager {
                 instanceThreshold: Math.max(5, this.config.instanceThreshold - 2),
             });
 
-            // Force LOD to lower quality
             this.lodManager.setAggressiveMode(true);
         } else if (avgFrameTime < targetFrameTime * 0.8) {
-            // Performance is good, can afford higher quality
             this.updateConfig({
                 maxRenderDistance: Math.min(10000, this.config.maxRenderDistance * 1.1),
                 instanceThreshold: Math.min(20, this.config.instanceThreshold + 1),
@@ -289,9 +235,6 @@ export class PerformanceManager {
         }
     }
 
-    /**
-     * Force garbage collection and cleanup
-     */
     cleanup() {
         this.memoryManager.forceCleanup();
         this.instanceManager.cleanup();
@@ -299,9 +242,6 @@ export class PerformanceManager {
         this.lodManager.cleanup();
     }
 
-    /**
-     * Dispose of the performance manager
-     */
     dispose() {
         this.space.off('node:added', this._onNodeAdded.bind(this));
         this.space.off('node:removed', this._onNodeRemoved.bind(this));
@@ -313,20 +253,14 @@ export class PerformanceManager {
         this.cullingManager.dispose();
         this.lodManager.dispose();
         this.memoryManager.dispose();
-
-        // console.log('PerformanceManager disposed');
     }
 }
 
-/**
- * InstanceManager handles object instancing for improved performance
- */
 class InstanceManager {
     constructor(performanceManager) {
         this.perfManager = performanceManager;
         this.enabled = true;
 
-        // Instance groups by geometry type
         this.instanceGroups = new Map();
         this.registeredObjects = new Map();
         this.instancedCount = 0;
@@ -384,7 +318,6 @@ class InstanceManager {
     }
 
     _getGeometryKey(object) {
-        // Generate a key based on object geometry and material
         if (object.object3d && object.object3d.children.length > 0) {
             const child = object.object3d.children[0];
             if (child.geometry && child.material) {
@@ -398,16 +331,13 @@ class InstanceManager {
         const group = this.instanceGroups.get(geometryKey);
         if (!group || group.objects.length === 0) return;
 
-        // Get reference geometry and material
         const refObject = group.objects[0].object3d.children[0];
         const geometry = refObject.geometry;
         const material = refObject.material.clone();
 
-        // Create instanced mesh
         const maxInstances = Math.min(group.objects.length, this.perfManager.config.maxInstances);
         const instancedMesh = new THREE.InstancedMesh(geometry, material, maxInstances);
 
-        // Set instance transforms
         const matrix = new THREE.Matrix4();
         group.objects.forEach((object, index) => {
             if (index >= maxInstances) return;
@@ -415,32 +345,27 @@ class InstanceManager {
             matrix.setPosition(object.position.x, object.position.y, object.position.z);
             instancedMesh.setMatrixAt(index, matrix);
 
-            // Hide original object
             object.object3d.visible = false;
         });
 
         instancedMesh.instanceMatrix.needsUpdate = true;
         group.instancedMesh = instancedMesh;
 
-        // Add to scene
         if (this.renderingPlugin) {
             this.renderingPlugin.getWebGLScene().add(instancedMesh);
         }
 
         this.instancedCount += group.objects.length;
-        // console.log(`Created instanced mesh for ${geometryKey} with ${group.objects.length} instances`);
     }
 
     _destroyInstancedMesh(geometryKey) {
         const group = this.instanceGroups.get(geometryKey);
         if (!group || !group.instancedMesh) return;
 
-        // Remove from scene
         if (this.renderingPlugin) {
             this.renderingPlugin.getWebGLScene().remove(group.instancedMesh);
         }
 
-        // Show original objects
         group.objects.forEach(object => {
             object.object3d.visible = true;
         });

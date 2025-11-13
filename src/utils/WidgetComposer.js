@@ -353,7 +353,7 @@ export class WidgetComposer {
 
     static _createDatasetWidgets(datasets) {
         const widgets = [];
-        datasets.forEach((dataset, index) => {
+        for (const [index, dataset] of datasets.entries()) {
             widgets.push({
                 id: `chart-${index}`,
                 type: 'chart',
@@ -373,7 +373,7 @@ export class WidgetComposer {
                     },
                 });
             }
-        });
+        }
         return widgets;
     }
 
@@ -539,7 +539,7 @@ export class WidgetComposer {
     static propagateData(event, targetWidget, connectionType) {
         const {controlId, value} = event;
 
-        targetWidget.getAllWidgets().forEach(widget => {
+        for (const widget of targetWidget.getAllWidgets()) {
             if (widget.data.controls) {
                 const matchingControl = widget.data.controls.find(c => c.id === controlId);
                 if (matchingControl) {
@@ -547,7 +547,7 @@ export class WidgetComposer {
                     targetWidget.updateWidget(widget.id, widget.data);
                 }
             }
-        });
+        }
     }
 
     static exportConfiguration(metaWidget) {

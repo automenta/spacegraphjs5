@@ -46,9 +46,11 @@ export class EdgePlugin extends Plugin {
     }
 
     handleRendererResize({width, height}) {
-        this.edges.forEach(edge => {
-            !edge.isInstanced && edge.updateResolution && edge.updateResolution(width, height);
-        });
+        for (const edge of this.edges.values()) {
+            if (!edge.isInstanced && edge.updateResolution) {
+                edge.updateResolution(width, height);
+            }
+        }
     }
 
     _checkAndSwitchInstancingMode() {
@@ -62,15 +64,19 @@ export class EdgePlugin extends Plugin {
         const webglScene = this._renderingPlugin.getWebGLScene();
         const cssScene = this._renderingPlugin.getCSS3DScene();
 
-        this.edges.forEach(edge => {
+        for (const edge of this.edges.values()) {
             if (this.useInstancedEdges) {
-                !edge.isInstanced && this._removeEdgeFromScene(edge, webglScene, cssScene);
-                !edge.isInstanced && this.instancedEdgeManager.addEdge(edge);
+                if (!edge.isInstanced) {
+                    this._removeEdgeFromScene(edge, webglScene, cssScene);
+                    this.instancedEdgeManager.addEdge(edge);
+                }
             } else {
-                edge.isInstanced && this.instancedEdgeManager.removeEdge(edge);
-                this._addEdgeToScene(edge, webglScene, cssScene);
+                if (edge.isInstanced) {
+                    this.instancedEdgeManager.removeEdge(edge);
+                    this._addEdgeToScene(edge, webglScene, cssScene);
+                }
             }
-        });
+        }
     }
 
     _removeEdgeFromScene(edge, webglScene, cssScene) {
@@ -168,19 +174,23 @@ export class EdgePlugin extends Plugin {
     }
 
     update() {
-        this.edges.forEach(edge => {
-            edge.isInstanced && this.instancedEdgeManager
-                ? this.instancedEdgeManager.updateEdge(edge)
-                : edge.update?.();
+        for (const edge of this.edges.values()) {
+            if (edge.isInstanced && this.instancedEdgeManager) {
+                this.instancedEdgeManager.updateEdge(edge);
+            } else {
+                edge.update?.();
+            }
             edge.updateLabelPosition?.();
-        });
+        }
     }
 
     dispose() {
         super.dispose();
         this.instancedEdgeManager?.dispose();
         this.instancedEdgeManager = null;
-        this.edges.forEach(edge => edge.dispose());
+        for (const edge of this.edges.values()) {
+            edge.dispose();
+        }
         this.edges.clear();
     }
 }

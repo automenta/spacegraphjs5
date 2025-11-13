@@ -95,6 +95,9 @@ class InstancedMeshGroup {
 
 export class InstancedMeshManager {
     constructor(scene) {
+        if (!scene) {
+            throw new TypeError('InstancedMeshManager requires a scene');
+        }
         this.scene = scene;
         this.meshGroups = new Map();
         this.gltfLoader = new GLTFLoader();
@@ -125,7 +128,7 @@ export class InstancedMeshManager {
             }
         } catch (error) {
             console.error(`Error loading GLTF model from ${url}:`, error);
-            return null;
+            throw new Error(`GLTF loading failed: ${url}`);
         }
     }
 
@@ -142,6 +145,8 @@ export class InstancedMeshManager {
     }
 
     async getNodeGroup(node) {
+        if (!node?.data) return null;
+
         if (node.data.shape === 'sphere') {
             return this.meshGroups.get('sphere');
         }
@@ -149,14 +154,19 @@ export class InstancedMeshManager {
         if (node.data.gltfUrl) {
             let group = this.meshGroups.get(node.data.gltfUrl);
             if (!group) {
-                const geometry = await this._loadGltfModel(node.data.gltfUrl);
-                if (geometry) {
-                    const material = new THREE.MeshStandardMaterial({
-                        roughness: 0.6,
-                        metalness: 0.2,
-                    });
-                    group = new InstancedMeshGroup(geometry, material, this.scene);
-                    this.meshGroups.set(node.data.gltfUrl, group);
+                try {
+                    const geometry = await this._loadGltfModel(node.data.gltfUrl);
+                    if (geometry) {
+                        const material = new THREE.MeshStandardMaterial({
+                            roughness: 0.6,
+                            metalness: 0.2,
+                        });
+                        group = new InstancedMeshGroup(geometry, material, this.scene);
+                        this.meshGroups.set(node.data.gltfUrl, group);
+                    }
+                } catch (error) {
+                    console.error(`Failed to create instanced group for ${node.data.gltfUrl}:`, error);
+                    return null;
                 }
             }
             return group;
@@ -166,16 +176,20 @@ export class InstancedMeshManager {
     }
 
     async addNode(node) {
+        if (!node?.id) return false;
+
         const group = await this.getNodeGroup(node);
         if (!group) {
             node.isInstanced = false;
             return false;
         }
+        
         const instanceId = group.addNode(node);
         if (instanceId === null) {
             node.isInstanced = false;
             return false;
         }
+        
         node.isInstanced = true;
         node.instanceId = instanceId;
         node.mesh && (node.mesh.visible = false);
@@ -183,7 +197,7 @@ export class InstancedMeshManager {
     }
 
     async updateNode(node) {
-        if (!node.isInstanced) return;
+        if (!node?.isInstanced) return;
 
         const group = await this.getNodeGroup(node);
         if (group) {
@@ -193,7 +207,8 @@ export class InstancedMeshManager {
     }
 
     async removeNode(node) {
-        if (!node.isInstanced) return;
+        if (!node?.isInstanced) return;
+        
         const group = await this.getNodeGroup(node);
         if (group) {
             group.removeNode(node);
@@ -202,14 +217,21 @@ export class InstancedMeshManager {
     }
 
     raycast(raycaster) {
-        return [...this.meshGroups.values()]
-            .map(group => group.getRaycastIntersection(raycaster))
-            .filter(Boolean)
-            .sort((a, b) => a.distance - b.distance)[0] || null;
+        let closestIntersection = null;
+        for (const group of this.meshGroups.values()) {
+            const intersection = group.getRaycastIntersection(raycaster);
+            if (intersection && (!closestIntersection || intersection.distance < closestIntersection.distance)) {
+                closestIntersection = intersection;
+            }
+        }
+        return closestIntersection;
     }
 
     dispose() {
-        this.meshGroups.forEach(group => group.dispose());
+        for (const group of this.meshGroups.values()) {
+            group.dispose();
+        }
         this.meshGroups.clear();
+        this.loadedGltfGeometries.clear();
     }
 }

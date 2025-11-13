@@ -19,37 +19,29 @@ export class LayoutManager {
     async applyLayout(name, config = {}) {
         const newLayout = this.layouts.get(name);
         if (!newLayout) {
-            console.error(`LayoutManager: Layout "${name}" not found.`);
-            return false;
+            throw new Error(`Layout "${name}" not found`);
         }
 
-        // Stop current layout if exists
         this.activeLayout && this._stopCurrentLayout();
 
-        // Set new active layout
         this.activeLayout = newLayout;
         this.activeLayoutName = name;
 
-        // Update configuration
         this.activeLayout.updateConfig?.(config);
 
-        // Get nodes and edges from plugins
         const nodePlugin = this.pluginManager.getPlugin('NodePlugin');
         const edgePlugin = this.pluginManager.getPlugin('EdgePlugin');
 
         const nodes = nodePlugin ? [...nodePlugin.getNodes().values()] : [];
         const edges = edgePlugin ? [...edgePlugin.getEdges().values()] : [];
 
-        // Initialize layout with animation
         if (this.activeLayout.init) {
             const oldPositions = new Map(nodes.map(node => [node.id, node.position.clone()]));
             await this.activeLayout.init(nodes, edges, config);
 
-            // Animate position transitions
             await Promise.all(nodes.map(node => this._animateNodePosition(node, oldPositions.get(node.id), node.position)));
         }
 
-        // Run the layout
         if (this.activeLayout.run) {
             this.space.emit('layout:started', {name: this.activeLayoutName, layout: this.activeLayout});
             await this.activeLayout.run();

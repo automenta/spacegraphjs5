@@ -16,9 +16,9 @@ export class EdgeFactory extends BaseFactory {
      */
     registerCoreEdgeTypes() {
         // Register all categorized edge types
-        Object.values(edgeTypes).flat().forEach(({name, class: edgeClass}) => {
+        for (const {name, class: edgeClass} of Object.values(edgeTypes).flat()) {
             this.registerType(name, edgeClass);
-        });
+        }
 
         // Register default fallback
         this.registerType(defaultEdgeType.name, defaultEdgeType.class);

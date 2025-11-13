@@ -36,7 +36,9 @@ export class Edge {
     };
 
     constructor(id, sourceNode, targetNode, data = {}) {
-        if (!sourceNode || !targetNode) throw new Error('Edge requires valid source and target nodes.');
+        if (!sourceNode || !targetNode) {
+            throw new TypeError('Edge requires valid source and target nodes');
+        }
         
         this.id = id;
         this.source = sourceNode;
@@ -58,7 +60,6 @@ export class Edge {
         
         this.data = Utils.mergeDeep({}, defaultData, data);
         
-        // Ensure color is null if gradient is used, with fallback
         if (this.data.gradientColors?.length === 2) {
             this.data.color = null;
         } else if (this.data.color === null) {
@@ -96,18 +97,13 @@ export class Edge {
             gapSize: this.data.gapSize ?? 1,
         };
 
-        // Handle gradient colors vs solid color
         if (this.data.gradientColors?.length === 2) {
             materialConfig.vertexColors = true;
             this._colorStart.set(this.data.gradientColors[0]);
             this._colorEnd.set(this.data.gradientColors[1]);
             geometry.setColors([
-                this._colorStart.r,
-                this._colorStart.g,
-                this._colorStart.b,
-                this._colorEnd.r,
-                this._colorEnd.g,
-                this._colorEnd.b,
+                this._colorStart.r, this._colorStart.g, this._colorStart.b,
+                this._colorEnd.r, this._colorEnd.g, this._colorEnd.b,
             ]);
         } else {
             materialConfig.vertexColors = false;
@@ -128,7 +124,6 @@ export class Edge {
 
         const material = this.line.material;
 
-        // Handle gradient colors
         if (this.data.gradientColors?.length === 2) {
             if (!material.vertexColors) {
                 material.vertexColors = true;
@@ -140,7 +135,6 @@ export class Edge {
 
             const colorAttr = this.line.geometry.attributes.color;
             if (colorAttr?.array?.length >= 6) {
-                // Update existing color array for at least 2 points
                 const colors = colorAttr.array;
                 colors[0] = this._colorStart.r;
                 colors[1] = this._colorStart.g;
@@ -150,7 +144,6 @@ export class Edge {
                 colors[5] = this._colorEnd.b;
                 colorAttr.needsUpdate = true;
             } else {
-                // Interpolate colors for all points
                 const posAttribute = this.line.geometry.attributes.position;
                 if (posAttribute) {
                     const numPoints = posAttribute.count;
@@ -166,7 +159,6 @@ export class Edge {
                 }
             }
         } else {
-            // Handle solid color
             if (material.vertexColors) {
                 material.vertexColors = false;
                 material.needsUpdate = true;
@@ -205,11 +197,6 @@ export class Edge {
         this._updateArrowheads();
     }
 
-    /**
-     * Validates if a position vector has finite components.
-     * @param {THREE.Vector3} position - The position to validate.
-     * @returns {boolean} True if all components are finite, false otherwise.
-     */
     _isValidPosition(position) {
         return (
             position &&
@@ -282,11 +269,6 @@ export class Edge {
         if (highlight && this.isHovered) this.setHoverStyle(false, true);
     }
 
-    /**
-     * Updates the style of an arrowhead.
-     * @param {THREE.Mesh} arrowhead - The arrowhead to update.
-     * @param {boolean} isHighlighted - Whether the edge is highlighted.
-     */
     _updateArrowheadStyle(arrowhead, isHighlighted) {
         if (!arrowhead?.material) return;
 
@@ -325,11 +307,6 @@ export class Edge {
         }
     }
 
-    /**
-     * Updates the opacity of an arrowhead.
-     * @param {THREE.Mesh} arrowhead - The arrowhead to update.
-     * @param {boolean} isHovered - Whether the edge is hovered.
-     */
     _updateArrowheadOpacity(arrowhead, isHovered) {
         if (!arrowhead?.material) return;
 
@@ -357,10 +334,6 @@ export class Edge {
         this.arrowheads.target = null;
     }
 
-    /**
-     * Disposes of an arrowhead's resources.
-     * @param {THREE.Mesh} arrowhead - The arrowhead to dispose.
-     */
     _disposeArrowhead(arrowhead) {
         if (!arrowhead) return;
         arrowhead.geometry?.dispose();

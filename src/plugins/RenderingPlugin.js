@@ -117,7 +117,7 @@ export class RenderingPlugin extends Plugin {
         if (!this.outlineEffect || !this.selection || !this.effectsConfig.outline.enabled) return;
 
         this.selection.clear();
-        payload.selected?.forEach(selectedItem => {
+        for (const selectedItem of payload.selected ?? []) {
             const object = selectedItem.mesh || selectedItem.line;
             if (object && this._isObjectInMainScene(object)) {
                 if (
@@ -128,7 +128,7 @@ export class RenderingPlugin extends Plugin {
                     this.selection.add(object);
                 }
             }
-        });
+        }
     }
 
     _isObjectInMainScene(object) {
@@ -240,25 +240,24 @@ export class RenderingPlugin extends Plugin {
     }
 
     _disposeAndRemovePasses() {
-        this.normalPassInstance?.dispose();
-        this.composer.removePass(this.normalPassInstance);
-        this.normalPassInstance = null;
-        this.effectPassSSAO?.dispose();
-        this.composer.removePass(this.effectPassSSAO);
-        this.effectPassSSAO = null;
-        this.effectPassOutline?.dispose();
-        this.composer.removePass(this.effectPassOutline);
-        this.effectPassOutline = null;
-        this.effectPassBloom?.dispose();
-        this.composer.removePass(this.effectPassBloom);
-        this.effectPassBloom = null;
+        const passes = [
+            ['normalPassInstance', this.normalPassInstance],
+            ['effectPassSSAO', this.effectPassSSAO],
+            ['effectPassOutline', this.effectPassOutline],
+            ['effectPassBloom', this.effectPassBloom]
+        ];
 
-        this.ssaoEffect?.dispose();
-        this.ssaoEffect = null;
-        this.outlineEffect?.dispose();
-        this.outlineEffect = null;
-        this.bloomEffect?.dispose();
-        this.bloomEffect = null;
+        for (const [key, pass] of passes) {
+            pass?.dispose();
+            this.composer.removePass(pass);
+            this[key] = null;
+        }
+
+        const effects = ['ssaoEffect', 'outlineEffect', 'bloomEffect'];
+        for (const effectKey of effects) {
+            this[effectKey]?.dispose();
+            this[effectKey] = null;
+        }
     }
 
     _createEnabledEffectPasses(cam) {
@@ -430,22 +429,29 @@ export class RenderingPlugin extends Plugin {
     configureLight(id, options) {
         const light = this.managedLights.get(id);
         if (!light) return false;
-        options.color !== undefined && light.color.set(options.color);
-        options.intensity !== undefined && (light.intensity = options.intensity);
-        options.position &&
-        light.position?.set(options.position.x, options.position.y, options.position.z);
-        options.castShadow !== undefined &&
-        light.castShadow !== undefined &&
-        (light.castShadow = options.castShadow);
+
+        if (options.color !== undefined) light.color.set(options.color);
+        if (options.intensity !== undefined) light.intensity = options.intensity;
+        if (options.position !== undefined) {
+            light.position?.set(options.position.x, options.position.y, options.position.z);
+        }
+        if (options.castShadow !== undefined && light.castShadow !== undefined) {
+            light.castShadow = options.castShadow;
+        }
 
         if (light.shadow) {
-            options.shadowMapSizeWidth !== undefined &&
-            (light.shadow.mapSize.width = options.shadowMapSizeWidth);
-            options.shadowMapSizeHeight !== undefined &&
-            (light.shadow.mapSize.height = options.shadowMapSizeHeight);
-            options.shadowCameraNear !== undefined &&
-            (light.shadow.camera.near = options.shadowCameraNear);
-            options.shadowCameraFar !== undefined && (light.shadow.camera.far = options.shadowCameraFar);
+            if (options.shadowMapSizeWidth !== undefined) {
+                light.shadow.mapSize.width = options.shadowMapSizeWidth;
+            }
+            if (options.shadowMapSizeHeight !== undefined) {
+                light.shadow.mapSize.height = options.shadowMapSizeHeight;
+            }
+            if (options.shadowCameraNear !== undefined) {
+                light.shadow.camera.near = options.shadowCameraNear;
+            }
+            if (options.shadowCameraFar !== undefined) {
+                light.shadow.camera.far = options.shadowCameraFar;
+            }
             if (
                 light.shadow.camera instanceof THREE.OrthographicCamera &&
                 options.shadowCameraSize !== undefined
@@ -515,10 +521,15 @@ export class RenderingPlugin extends Plugin {
 
         this.scene?.traverse(object => {
             object.geometry?.dispose();
-            if (object.material)
-                Array.isArray(object.material)
-                    ? object.material.forEach(m => m.dispose())
-                    : object.material.dispose();
+            if (object.material) {
+                if (Array.isArray(object.material)) {
+                    for (const material of object.material) {
+                        material.dispose();
+                    }
+                } else {
+                    object.material.dispose();
+                }
+            }
         });
         this.scene?.clear();
         this.cssScene?.clear();

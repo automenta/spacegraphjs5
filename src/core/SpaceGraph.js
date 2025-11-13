@@ -26,11 +26,7 @@ export class SpaceGraph {
     _lastMouseY = 0;
     
     // Bound event handlers
-    _boundHandleContextMenuEvent = null;
-    _boundHandleMouseDownEvent = null;
-    _boundHandleMouseMoveEvent = null;
-    _boundHandleMouseUpOrLeaveEvent = null;
-    _boundHandleWheelEvent = null;
+    _boundHandlers = new Map();
 
     constructor(containerElement, options = {}) {
         if (!containerElement) {
@@ -45,7 +41,7 @@ export class SpaceGraph {
         const {contextMenuElement, confirmDialogElement} = uiOptions;
 
         // Register core plugins
-        [
+        this._registerCorePlugins([
             [CameraPlugin, [this, this.plugins]],
             [RenderingPlugin, [this, this.plugins]],
             [NodePlugin, [this, this.plugins]],
@@ -56,20 +52,24 @@ export class SpaceGraph {
             [DataPlugin, [this, this.plugins]],
             [FractalZoomPlugin, [this, this.plugins]],
             [PerformancePlugin, [this, this.plugins]]
-        ].forEach(([PluginClass, args]) => this.plugins.add(new PluginClass(...args)));
+        ]);
+    }
+
+    _registerCorePlugins(pluginConfigs) {
+        for (const [PluginClass, args] of pluginConfigs) {
+            try {
+                this.plugins.add(new PluginClass(...args));
+            } catch (error) {
+                console.error(`Failed to register plugin ${PluginClass.name}:`, error);
+                throw new Error(`Plugin registration failed: ${PluginClass.name}`);
+            }
+        }
     }
 
     get layoutManager() {
         return this._layoutPlugin?.layoutManager;
     }
 
-    /**
-     * Async factory method to create and initialize a SpaceGraph instance with default configuration.
-     * This provides an ergonomic API that minimizes boilerplate while properly handling async initialization.
-     * @param {HTMLElement|string} containerOrContainerID - The container element or container ID for the graph
-     * @param {Object} options - Additional options to merge with defaults
-     * @returns {Promise<SpaceGraph>} The initialized and animated SpaceGraph instance
-     */
     static async the(containerOrContainerID, options = {}) {
         const container = typeof containerOrContainerID === 'string'
             ? document.getElementById(containerOrContainerID)
@@ -79,22 +79,7 @@ export class SpaceGraph {
             throw new ReferenceError(`Container not found: ${containerOrContainerID}`);
         }
 
-        const defaultOptions = {
-            ui: {
-                contextMenuElement: document.createElement('div'),
-                confirmDialogElement: document.createElement('div'),
-            }
-        };
-
-        const config = {
-            ...defaultOptions,
-            ...options,
-            ui: {
-                ...defaultOptions.ui,
-                ...(options.ui || {})
-            }
-        };
-
+        const config = this._mergeOptions(options);
         const space = new SpaceGraph(container, config);
         await space.init();
         space.animate();
@@ -102,13 +87,36 @@ export class SpaceGraph {
         return space;
     }
 
+    static _mergeOptions(options) {
+        const defaultOptions = {
+            ui: {
+                contextMenuElement: document.createElement('div'),
+                confirmDialogElement: document.createElement('div'),
+            }
+        };
+
+        return {
+            ...defaultOptions,
+            ...options,
+            ui: {
+                ...defaultOptions.ui,
+                ...(options.ui || {})
+            }
+        };
+    }
+
     async init() {
-        await this.plugins.initPlugins();
-        this._cachePlugins();
-        this._initializeCamera();
-        this._bindEventHandlers();
-        this._setupAllEventListeners();
-        this._setupCameraMouseControls();
+        try {
+            await this.plugins.initPlugins();
+            this._cachePlugins();
+            this._initializeCamera();
+            this._bindEventHandlers();
+            this._setupAllEventListeners();
+            this._setupCameraMouseControls();
+        } catch (error) {
+            console.error('SpaceGraph initialization failed:', error);
+            throw new Error(`Initialization failed: ${error.message}`);
+        }
     }
 
     _cachePlugins() {
@@ -127,11 +135,18 @@ export class SpaceGraph {
     }
 
     _bindEventHandlers() {
-        this._boundHandleContextMenuEvent = this._handleContextMenuEvent.bind(this);
-        this._boundHandleMouseDownEvent = this._handleMouseDownEvent.bind(this);
-        this._boundHandleMouseMoveEvent = this._handleMouseMoveEvent.bind(this);
-        this._boundHandleMouseUpOrLeaveEvent = this._handleMouseUpOrLeaveEvent.bind(this);
-        this._boundHandleWheelEvent = this._handleWheelEvent.bind(this);
+        const handlers = {
+            contextmenu: this._handleContextMenuEvent.bind(this),
+            mousedown: this._handleMouseDownEvent.bind(this),
+            mousemove: this._handleMouseMoveEvent.bind(this),
+            mouseup: this._handleMouseUpOrLeaveEvent.bind(this),
+            mouseleave: this._handleMouseUpOrLeaveEvent.bind(this),
+            wheel: this._handleWheelEvent.bind(this)
+        };
+
+        for (const [event, handler] of Object.entries(handlers)) {
+            this._boundHandlers.set(event, handler);
+        }
     }
 
     on(eventName, callback) {
@@ -205,41 +220,39 @@ export class SpaceGraph {
         const edge = this._edgePlugin?.getEdgeById(edgeId);
         if (!edge) return;
 
-        switch (property) {
-            case 'color':
+        this._updateEdgeProperty(edge, property, value);
+    }
+
+    _updateEdgeProperty(edge, property, value) {
+        const propertyHandlers = {
+            color: (edge, value) => {
                 edge.data.color = value;
                 edge.setHighlight(this._uiPlugin?.getSelectedEdges().has(edge));
-                break;
-            case 'thickness':
+            },
+            thickness: (edge, value) => {
                 edge.data.thickness = value;
                 if (edge.line?.material) edge.line.material.linewidth = edge.data.thickness;
-                break;
-            case 'constraintType':
+            },
+            constraintType: (edge, value) => {
                 this._updateEdgeConstraint(edge, value);
                 this._layoutPlugin?.kick();
-                break;
-        }
+            }
+        };
+
+        propertyHandlers[property]?.(edge, value);
     }
 
     _updateEdgeConstraint(edge, constraintType) {
         edge.data.constraintType = constraintType;
         const params = edge.data.constraintParams || {};
 
-        switch (constraintType) {
-            case 'rigid':
-                params.distance ??= edge.source.position.distanceTo(edge.target.position);
-                params.stiffness ??= 0.1;
-                break;
-            case 'weld':
-                params.distance ??= edge.source.getBoundingSphereRadius() + edge.target.getBoundingSphereRadius();
-                params.stiffness ??= 0.5;
-                break;
-            case 'elastic':
-                params.stiffness ??= 0.001;
-                params.idealLength ??= 200;
-                break;
-        }
-        edge.data.constraintParams = params;
+        const constraintDefaults = {
+            rigid: { distance: edge.source.position.distanceTo(edge.target.position), stiffness: 0.1 },
+            weld: { distance: edge.source.getBoundingSphereRadius() + edge.target.getBoundingSphereRadius(), stiffness: 0.5 },
+            elastic: { stiffness: 0.001, idealLength: 200 }
+        };
+
+        edge.data.constraintParams = { ...constraintDefaults[constraintType], ...params };
     }
 
     _setupUIEventListeners() {
@@ -289,7 +302,8 @@ export class SpaceGraph {
     autoZoom(node) {
         if (!node || !this._cameraPlugin) return;
 
-        if (this._cameraPlugin.getCurrentTargetNodeId() === node.id) {
+        const currentTargetId = this._cameraPlugin.getCurrentTargetNodeId();
+        if (currentTargetId === node.id) {
             this._cameraPlugin.popState();
             this._cameraPlugin.setCurrentTargetNodeId(null);
         } else {
@@ -315,6 +329,13 @@ export class SpaceGraph {
         return raycaster.ray.intersectPlane(targetPlane, intersectPoint) ?? null;
     }
 
+    _intersectObjects(raycaster, intersectionHandlers) {
+        return intersectionHandlers
+            .map(handler => handler(raycaster))
+            .filter(Boolean)
+            .sort((a, b) => a.distance - b.distance)[0];
+    }
+
     _intersectInstancedNodes(raycaster) {
         const instancedNodeManager = this._renderingPlugin?.getInstancedMeshManager();
         if (!instancedNodeManager) return null;
@@ -326,55 +347,51 @@ export class SpaceGraph {
         return node ? {node, distance: intersection.distance, type: 'node'} : null;
     }
 
-    _intersectNonInstancedNodes(raycaster, currentClosest) {
+    _intersectNonInstancedNodes(raycaster) {
         const currentNodes = this._nodePlugin?.getNodes();
-        if (!currentNodes) return currentClosest;
+        if (!currentNodes) return null;
 
         const nonInstancedNodeMeshes = [...currentNodes.values()]
             .filter(n => !n.isInstanced && n.mesh?.visible)
             .map(n => n.mesh);
 
-        if (nonInstancedNodeMeshes.length === 0) return currentClosest;
+        if (nonInstancedNodeMeshes.length === 0) return null;
 
         const intersects = raycaster.intersectObjects(nonInstancedNodeMeshes, false);
-        if (intersects.length === 0) return currentClosest;
+        if (intersects.length === 0) return null;
 
         const [firstIntersect] = intersects;
-        if (currentClosest && firstIntersect.distance >= currentClosest.distance) return currentClosest;
-
         const node = this._nodePlugin.getNodeById(firstIntersect.object.userData?.nodeId);
-        return node ? {node, distance: firstIntersect.distance, type: 'node'} : currentClosest;
+        return node ? {node, distance: firstIntersect.distance, type: 'node'} : null;
     }
 
-    _intersectInstancedEdges(raycaster, currentClosest) {
+    _intersectInstancedEdges(raycaster) {
         const instancedEdgeManager = this._edgePlugin?.instancedEdgeManager;
-        if (!instancedEdgeManager) return currentClosest;
+        if (!instancedEdgeManager) return null;
 
         const intersection = instancedEdgeManager.raycast(raycaster);
-        if (!intersection || (currentClosest && intersection.distance >= currentClosest.distance)) return currentClosest;
+        if (!intersection) return null;
 
         const edge = this._edgePlugin?.getEdgeById(intersection.edgeId);
-        return edge ? {edge, distance: intersection.distance, type: 'edge'} : currentClosest;
+        return edge ? {edge, distance: intersection.distance, type: 'edge'} : null;
     }
 
-    _intersectNonInstancedEdges(raycaster, currentClosest) {
+    _intersectNonInstancedEdges(raycaster) {
         const currentEdges = this._edgePlugin?.getEdges();
-        if (!currentEdges) return currentClosest;
+        if (!currentEdges) return null;
 
         const nonInstancedEdgeLines = [...currentEdges.values()]
             .filter(e => !e.isInstanced && e.line?.visible)
             .map(e => e.line);
 
-        if (nonInstancedEdgeLines.length === 0) return currentClosest;
+        if (nonInstancedEdgeLines.length === 0) return null;
 
         const intersects = raycaster.intersectObjects(nonInstancedEdgeLines, false);
-        if (intersects.length === 0) return currentClosest;
+        if (intersects.length === 0) return null;
 
         const [firstIntersect] = intersects;
-        if (currentClosest && firstIntersect.distance >= currentClosest.distance) return currentClosest;
-
         const edge = this._edgePlugin.getEdgeById(firstIntersect.object.userData?.edgeId);
-        return edge ? {edge, distance: firstIntersect.distance, type: 'edge'} : currentClosest;
+        return edge ? {edge, distance: firstIntersect.distance, type: 'edge'} : null;
     }
 
     intersectedObjects(screenX, screenY) {
@@ -389,12 +406,12 @@ export class SpaceGraph {
         ), camInstance);
         raycaster.params.Line.threshold = 5;
 
-        const closestIntersect = [
-            this._intersectInstancedNodes(raycaster),
-            this._intersectNonInstancedNodes(raycaster, null),
-            this._intersectInstancedEdges(raycaster, null),
-            this._intersectNonInstancedEdges(raycaster, null)
-        ].filter(Boolean).sort((a, b) => a.distance - b.distance)[0];
+        const closestIntersect = this._intersectObjects(raycaster, [
+            this._intersectInstancedNodes.bind(this),
+            this._intersectNonInstancedNodes.bind(this),
+            this._intersectInstancedEdges.bind(this),
+            this._intersectNonInstancedEdges.bind(this)
+        ]);
 
         if (!closestIntersect) return null;
 
@@ -428,15 +445,15 @@ export class SpaceGraph {
     _setupCameraMouseControls() {
         if (!this._cameraPlugin || !this.container) return;
 
-        this.container.addEventListener('contextmenu', this._boundHandleContextMenuEvent);
-        this.container.addEventListener('mousedown', this._boundHandleMouseDownEvent);
-        this.container.addEventListener('mousemove', this._boundHandleMouseMoveEvent);
-        this.container.addEventListener('mouseup', this._boundHandleMouseUpOrLeaveEvent);
-        this.container.addEventListener('mouseleave', this._boundHandleMouseUpOrLeaveEvent);
-        this.container.addEventListener('wheel', this._boundHandleWheelEvent, {passive: false});
+        for (const [event, handler] of this._boundHandlers) {
+            if (event === 'wheel') {
+                this.container.addEventListener(event, handler, {passive: false});
+            } else {
+                this.container.addEventListener(event, handler);
+            }
+        }
     }
 
-    /** Handles the contextmenu event on the container. */
     _handleContextMenuEvent(event) {
         const cameraControls = this._cameraPlugin?.getControls();
         if (cameraControls?.cameraMode === 'drag_orbit' && cameraControls?.isOrbitDragging) {
@@ -500,11 +517,10 @@ export class SpaceGraph {
 
     _removeCameraMouseControls() {
         if (!this.container) return;
-        this.container.removeEventListener('contextmenu', this._boundHandleContextMenuEvent);
-        this.container.removeEventListener('mousedown', this._boundHandleMouseDownEvent);
-        this.container.removeEventListener('mousemove', this._boundHandleMouseMoveEvent);
-        this.container.removeEventListener('mouseup', this._boundHandleMouseUpOrLeaveEvent);
-        this.container.removeEventListener('mouseleave', this._boundHandleMouseUpOrLeaveEvent);
-        this.container.removeEventListener('wheel', this._boundHandleWheelEvent);
+
+        for (const [event, handler] of this._boundHandlers) {
+            this.container.removeEventListener(event, handler);
+        }
+        this._boundHandlers.clear();
     }
 }
