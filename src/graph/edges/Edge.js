@@ -37,9 +37,12 @@ export class Edge {
 
     constructor(id, sourceNode, targetNode, data = {}) {
         if (!sourceNode || !targetNode) throw new Error('Edge requires valid source and target nodes.');
+        
         this.id = id;
         this.source = sourceNode;
         this.target = targetNode;
+        this.isInstanced = false;
+        this.instanceId = null;
 
         const defaultData = {
             color: 0x00d0ff,
@@ -52,10 +55,9 @@ export class Edge {
             arrowheadSize: 10,
             arrowheadColor: null,
         };
+        
         this.data = Utils.mergeDeep({}, defaultData, data);
-        this.isInstanced = false;
-        this.instanceId = null;
-
+        
         // Ensure color is null if gradient is used, with fallback
         if (this.data.gradientColors?.length === 2) {
             this.data.color = null;

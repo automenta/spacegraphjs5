@@ -104,8 +104,14 @@ export class SpaceGraph {
 
     async init() {
         await this.plugins.initPlugins();
+        this._cachePlugins();
+        this._initializeCamera();
+        this._bindEventHandlers();
+        this._setupAllEventListeners();
+        this._setupCameraMouseControls();
+    }
 
-        // Cache frequently used plugins
+    _cachePlugins() {
         this._cameraPlugin = this.plugins.getPlugin('CameraPlugin');
         this._nodePlugin = this.plugins.getPlugin('NodePlugin');
         this._edgePlugin = this.plugins.getPlugin('EdgePlugin');
@@ -113,19 +119,19 @@ export class SpaceGraph {
         this._uiPlugin = this.plugins.getPlugin('UIPlugin');
         this._renderingPlugin = this.plugins.getPlugin('RenderingPlugin');
         this._dataPlugin = this.plugins.getPlugin('DataPlugin');
+    }
 
+    _initializeCamera() {
         this._cameraPlugin?.centerView(null, 0);
         this._cameraPlugin?.setInitialState();
+    }
 
-        // Initialize bound event handlers
+    _bindEventHandlers() {
         this._boundHandleContextMenuEvent = this._handleContextMenuEvent.bind(this);
         this._boundHandleMouseDownEvent = this._handleMouseDownEvent.bind(this);
         this._boundHandleMouseMoveEvent = this._handleMouseMoveEvent.bind(this);
         this._boundHandleMouseUpOrLeaveEvent = this._handleMouseUpOrLeaveEvent.bind(this);
         this._boundHandleWheelEvent = this._handleWheelEvent.bind(this);
-
-        this._setupAllEventListeners();
-        this._setupCameraMouseControls();
     }
 
     on(eventName, callback) {
@@ -376,12 +382,11 @@ export class SpaceGraph {
         if (!camInstance) return null;
 
         camInstance.updateMatrixWorld();
-        const vec = new THREE.Vector2(
+        const raycaster = new THREE.Raycaster();
+        raycaster.setFromCamera(new THREE.Vector2(
             (screenX / window.innerWidth) * 2 - 1,
             -(screenY / window.innerHeight) * 2 + 1
-        );
-        const raycaster = new THREE.Raycaster();
-        raycaster.setFromCamera(vec, camInstance);
+        ), camInstance);
         raycaster.params.Line.threshold = 5;
 
         const closestIntersect = [
@@ -447,23 +452,17 @@ export class SpaceGraph {
         this._lastMouseX = event.clientX;
         this._lastMouseY = event.clientY;
 
-        const {cameraMode} = cameraControls;
-        const {button} = event;
+        const {cameraMode, button} = {cameraMode: cameraControls.cameraMode, button: event.button};
         
         switch (cameraMode) {
             case 'drag_orbit':
-                if (button === 0) {
-                    cameraControls.startPan(event.clientX, event.clientY);
-                } else if (button === 1 || button === 2) {
-                    event.preventDefault();
-                    cameraControls.startOrbitDrag(event.clientX, event.clientY);
-                }
+                button === 0
+                    ? cameraControls.startPan(event.clientX, event.clientY)
+                    : (button === 1 || button === 2) && (event.preventDefault(), cameraControls.startOrbitDrag(event.clientX, event.clientY));
                 break;
             case 'orbit':
             case 'top_down':
-                if (button === 0) {
-                    cameraControls.startPan(event.clientX, event.clientY);
-                }
+                button === 0 && cameraControls.startPan(event.clientX, event.clientY);
                 break;
         }
     }
