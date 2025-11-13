@@ -82,60 +82,31 @@ export class PerformanceManager {
 
     _onNodeAdded(nodeId, node) {
         this.stats.totalObjects++;
-
-        if (this.config.enableInstancing) {
-            this.instanceManager.registerObject(node);
-        }
-
-        if (this.config.enableLOD) {
-            this.lodManager.registerObject(node);
-        }
+        this.config.enableInstancing && this.instanceManager.registerObject(node);
+        this.config.enableLOD && this.lodManager.registerObject(node);
     }
 
     _onNodeRemoved(nodeId, node) {
         this.stats.totalObjects--;
-
-        if (this.config.enableInstancing) {
-            this.instanceManager.unregisterObject(node);
-        }
-
-        if (this.config.enableLOD) {
-            this.lodManager.unregisterObject(node);
-        }
+        this.config.enableInstancing && this.instanceManager.unregisterObject(node);
+        this.config.enableLOD && this.lodManager.unregisterObject(node);
     }
 
     _onEdgeAdded(edgeId, edge) {
         this.stats.totalObjects++;
-
-        if (this.config.enableInstancing) {
-            this.instanceManager.registerObject(edge);
-        }
-
-        if (this.config.enableLOD) {
-            this.lodManager.registerObject(edge);
-        }
+        this.config.enableInstancing && this.instanceManager.registerObject(edge);
+        this.config.enableLOD && this.lodManager.registerObject(edge);
     }
 
     _onEdgeRemoved(edgeId, edge) {
         this.stats.totalObjects--;
-
-        if (this.config.enableInstancing) {
-            this.instanceManager.unregisterObject(edge);
-        }
-
-        if (this.config.enableLOD) {
-            this.lodManager.unregisterObject(edge);
-        }
+        this.config.enableInstancing && this.instanceManager.unregisterObject(edge);
+        this.config.enableLOD && this.lodManager.unregisterObject(edge);
     }
 
     _onCameraChanged(data) {
-        if (this.config.enableCulling) {
-            this.cullingManager.updateCulling();
-        }
-
-        if (this.config.enableLOD) {
-            this.lodManager.updateLOD();
-        }
+        this.config.enableCulling && this.cullingManager.updateCulling();
+        this.config.enableLOD && this.lodManager.updateLOD();
     }
 
     update() {
@@ -145,17 +116,9 @@ export class PerformanceManager {
 
         this._updateFrameStats(frameTime);
 
-        if (this.config.enableCulling) {
-            this.cullingManager.update();
-        }
-
-        if (this.config.enableLOD) {
-            this.lodManager.update();
-        }
-
-        if (this.config.enableMemoryManagement) {
-            this.memoryManager.update();
-        }
+        this.config.enableCulling && this.cullingManager.update();
+        this.config.enableLOD && this.lodManager.update();
+        this.config.enableMemoryManagement && this.memoryManager.update();
 
         this._updateStats();
     }

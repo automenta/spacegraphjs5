@@ -120,9 +120,8 @@ export class Edge {
     }
 
     _setGradientColors() {
-        if (!this.line?.material) return;
-
-        const material = this.line.material;
+        const material = this.line?.material;
+        if (!material) return;
 
         if (this.data.gradientColors?.length === 2) {
             if (!material.vertexColors) {

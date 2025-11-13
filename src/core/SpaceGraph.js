@@ -338,59 +338,41 @@ export class SpaceGraph {
 
     _intersectInstancedNodes(raycaster) {
         const instancedNodeManager = this._renderingPlugin?.getInstancedMeshManager();
-        if (!instancedNodeManager) return null;
-
-        const intersection = instancedNodeManager.raycast(raycaster);
-        if (!intersection) return null;
-
-        const node = this._nodePlugin?.getNodeById(intersection.nodeId);
+        const intersection = instancedNodeManager?.raycast(raycaster);
+        const node = intersection && this._nodePlugin?.getNodeById(intersection.nodeId);
         return node ? {node, distance: intersection.distance, type: 'node'} : null;
     }
 
     _intersectNonInstancedNodes(raycaster) {
         const currentNodes = this._nodePlugin?.getNodes();
-        if (!currentNodes) return null;
-
-        const nonInstancedNodeMeshes = [...currentNodes.values()]
+        const nonInstancedNodeMeshes = currentNodes ? [...currentNodes.values()]
             .filter(n => !n.isInstanced && n.mesh?.visible)
-            .map(n => n.mesh);
+            .map(n => n.mesh) : [];
 
         if (nonInstancedNodeMeshes.length === 0) return null;
 
-        const intersects = raycaster.intersectObjects(nonInstancedNodeMeshes, false);
-        if (intersects.length === 0) return null;
-
-        const [firstIntersect] = intersects;
-        const node = this._nodePlugin.getNodeById(firstIntersect.object.userData?.nodeId);
+        const [firstIntersect] = raycaster.intersectObjects(nonInstancedNodeMeshes, false);
+        const node = firstIntersect && this._nodePlugin.getNodeById(firstIntersect.object.userData?.nodeId);
         return node ? {node, distance: firstIntersect.distance, type: 'node'} : null;
     }
 
     _intersectInstancedEdges(raycaster) {
         const instancedEdgeManager = this._edgePlugin?.instancedEdgeManager;
-        if (!instancedEdgeManager) return null;
-
-        const intersection = instancedEdgeManager.raycast(raycaster);
-        if (!intersection) return null;
-
-        const edge = this._edgePlugin?.getEdgeById(intersection.edgeId);
+        const intersection = instancedEdgeManager?.raycast(raycaster);
+        const edge = intersection && this._edgePlugin?.getEdgeById(intersection.edgeId);
         return edge ? {edge, distance: intersection.distance, type: 'edge'} : null;
     }
 
     _intersectNonInstancedEdges(raycaster) {
         const currentEdges = this._edgePlugin?.getEdges();
-        if (!currentEdges) return null;
-
-        const nonInstancedEdgeLines = [...currentEdges.values()]
+        const nonInstancedEdgeLines = currentEdges ? [...currentEdges.values()]
             .filter(e => !e.isInstanced && e.line?.visible)
-            .map(e => e.line);
+            .map(e => e.line) : [];
 
         if (nonInstancedEdgeLines.length === 0) return null;
 
-        const intersects = raycaster.intersectObjects(nonInstancedEdgeLines, false);
-        if (intersects.length === 0) return null;
-
-        const [firstIntersect] = intersects;
-        const edge = this._edgePlugin.getEdgeById(firstIntersect.object.userData?.edgeId);
+        const [firstIntersect] = raycaster.intersectObjects(nonInstancedEdgeLines, false);
+        const edge = firstIntersect && this._edgePlugin.getEdgeById(firstIntersect.object.userData?.edgeId);
         return edge ? {edge, distance: firstIntersect.distance, type: 'edge'} : null;
     }
 
@@ -446,11 +428,7 @@ export class SpaceGraph {
         if (!this._cameraPlugin || !this.container) return;
 
         for (const [event, handler] of this._boundHandlers) {
-            if (event === 'wheel') {
-                this.container.addEventListener(event, handler, {passive: false});
-            } else {
-                this.container.addEventListener(event, handler);
-            }
+            this.container.addEventListener(event, handler, event === 'wheel' ? {passive: false} : undefined);
         }
     }
 

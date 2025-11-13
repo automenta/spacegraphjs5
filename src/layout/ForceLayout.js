@@ -47,10 +47,7 @@ export class ForceLayout extends BaseLayout {
         switch (type) {
             case 'positionsUpdate':
                 this.totalEnergy = energy;
-                positions.forEach(p => {
-                    const node = this.nodesMap.get(p.id);
-                    node?.position.set(p.x, p.y, p.z);
-                });
+                positions.forEach(p => this.nodesMap.get(p.id)?.position.set(p.x, p.y, p.z));
                 break;
             case 'stopped':
                 this.isRunning = false;
@@ -170,12 +167,9 @@ export class ForceLayout extends BaseLayout {
     }
 
     addNode(node) {
-        // Early return if node is invalid or already exists
         if (!node?.id || this.nodesMap.has(node.id)) return;
 
         this.nodesMap.set(node.id, node);
-
-        // Send node data to worker
         this.worker.postMessage({
             type: 'addNode',
             payload: {
@@ -184,9 +178,7 @@ export class ForceLayout extends BaseLayout {
                     x: node.position?.x ?? 0,
                     y: node.position?.y ?? 0,
                     z: node.position?.z ?? 0,
-                    vx: 0,
-                    vy: 0,
-                    vz: 0,
+                    vx: 0, vy: 0, vz: 0,
                     mass: node.mass ?? 1.0,
                     isFixed: node.isPinned ?? false,
                     isPinned: node.isPinned ?? false,
@@ -196,23 +188,16 @@ export class ForceLayout extends BaseLayout {
             },
         });
 
-        if (this.isRunning || this.nodesMap.size > 1) this.kick();
+        (this.isRunning || this.nodesMap.size > 1) && this.kick();
     }
 
     removeNode(node) {
         if (!this.nodesMap.has(node.id)) return;
         this.nodesMap.delete(node.id);
-        this.worker.postMessage({
-            type: 'removeNode',
-            payload: {nodeId: node.id}
-        });
+        this.worker.postMessage({type: 'removeNode', payload: {nodeId: node.id}});
 
         if (this.isRunning) {
-            if (this.nodesMap.size < 2) {
-                this.stop();
-            } else {
-                this.kick();
-            }
+            this.nodesMap.size < 2 ? this.stop() : this.kick();
         }
     }
 

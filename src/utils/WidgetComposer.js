@@ -97,59 +97,29 @@ export class WidgetComposer {
         const title = metric.title || metric.name;
         const color = metric.color || this._getDefaultMetricColor(metric.type);
 
-        switch (metric.type) {
-            case 'gauge':
-                return {
-                    id: baseId,
-                    type: 'progress',
-                    data: {
-                        label: title,
-                        progressType: 'gauge',
-                        value: metric.value || 0,
-                        max: metric.max || 100,
-                        color,
-                    },
-                };
-            case 'progress':
-                return {
-                    id: baseId,
-                    type: 'progress',
-                    data: {
-                        label: title,
-                        progressType: 'bar',
-                        value: metric.value || 0,
-                        max: metric.max || 100,
-                        color,
-                    },
-                };
-            case 'status':
-                return {
-                    id: baseId,
-                    type: 'info',
-                    data: {
-                        text: title,
-                        icon: this._getStatusIcon(metric.status),
-                    },
-                };
-            case 'chart':
-                return {
-                    id: baseId,
-                    type: 'chart',
-                    data: {
-                        title,
-                        chartType: metric.chartType || 'line',
-                    },
-                };
-            default:
-                return {
-                    id: baseId,
-                    type: 'info',
-                    data: {
-                        text: title,
-                        icon: 'ℹ️',
-                    },
-                };
-        }
+        const widgetMap = {
+            gauge: {
+                type: 'progress',
+                data: {label: title, progressType: 'gauge', value: metric.value || 0, max: metric.max || 100, color}
+            },
+            progress: {
+                type: 'progress',
+                data: {label: title, progressType: 'bar', value: metric.value || 0, max: metric.max || 100, color}
+            },
+            status: {
+                type: 'info',
+                data: {text: title, icon: this._getStatusIcon(metric.status)}
+            },
+            chart: {
+                type: 'chart',
+                data: {title, chartType: metric.chartType || 'line'}
+            }
+        };
+
+        return {
+            id: baseId,
+            ...(widgetMap[metric.type] || {type: 'info', data: {text: title, icon: 'ℹ️'}})
+        };
     }
 
     static _getDefaultMetricColor(type) {
@@ -352,29 +322,24 @@ export class WidgetComposer {
     }
 
     static _createDatasetWidgets(datasets) {
-        const widgets = [];
-        for (const [index, dataset] of datasets.entries()) {
-            widgets.push({
+        return datasets.flatMap((dataset, index) => [
+            {
                 id: `chart-${index}`,
                 type: 'chart',
                 data: {
                     title: dataset.name || `Dataset ${index + 1}`,
                     chartType: dataset.chartType || 'line',
                 },
-            });
-
-            if (dataset.stats) {
-                widgets.push({
-                    id: `stats-${index}`,
-                    type: 'info',
-                    data: {
-                        text: `Records: ${dataset.stats.count || 0}\nAvg: ${dataset.stats.average || 0}`,
-                        icon: '📊',
-                    },
-                });
-            }
-        }
-        return widgets;
+            },
+            ...(dataset.stats ? [{
+                id: `stats-${index}`,
+                type: 'info',
+                data: {
+                    text: `Records: ${dataset.stats.count || 0}\nAvg: ${dataset.stats.average || 0}`,
+                    icon: '📊',
+                },
+            }] : [])
+        ]);
     }
 
     static _createVisualizationControlsWidget() {
@@ -572,24 +537,18 @@ export class WidgetComposer {
     }
 
     static createWidgetLibrary() {
-        return {
-            slider: (id, label, value = 50, min = 0, max = 100) => ({
-                id: id || 'slider',
-                type: 'control-panel',
-                data: {
-                    title: 'Slider Control',
-                    controls: [{id, type: 'slider', label, value, min, max}],
-                },
-            }),
+        const createControlPanel = (id, title, controls) => ({
+            id: id || 'control',
+            type: 'control-panel',
+            data: {title, controls}
+        });
 
-            button: (id, label, text) => ({
-                id: id || 'button',
-                type: 'control-panel',
-                data: {
-                    title: 'Button Control',
-                    controls: [{id, type: 'button', label: label || text, text: text || label}],
-                },
-            }),
+        return {
+            slider: (id, label, value = 50, min = 0, max = 100) =>
+                createControlPanel(id, 'Slider Control', [{id, type: 'slider', label, value, min, max}]),
+
+            button: (id, label, text) =>
+                createControlPanel(id, 'Button Control', [{id, type: 'button', label: label || text, text: text || label}]),
 
             progressBar: (id, label, value = 0, max = 100) => ({
                 id: id || 'progress',

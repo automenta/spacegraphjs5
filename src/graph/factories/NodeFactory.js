@@ -35,6 +35,6 @@ export class NodeFactory extends BaseFactory {
     }
 
     hasType(type) {
-        return this.hasType(type);
+        return super.hasType(type);
     }
 }

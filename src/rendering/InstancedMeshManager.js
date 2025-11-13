@@ -147,9 +147,7 @@ export class InstancedMeshManager {
     async getNodeGroup(node) {
         if (!node?.data) return null;
 
-        if (node.data.shape === 'sphere') {
-            return this.meshGroups.get('sphere');
-        }
+        if (node.data.shape === 'sphere') return this.meshGroups.get('sphere');
 
         if (node.data.gltfUrl) {
             let group = this.meshGroups.get(node.data.gltfUrl);
@@ -179,16 +177,10 @@ export class InstancedMeshManager {
         if (!node?.id) return false;
 
         const group = await this.getNodeGroup(node);
-        if (!group) {
-            node.isInstanced = false;
-            return false;
-        }
+        if (!group) return (node.isInstanced = false, false);
         
         const instanceId = group.addNode(node);
-        if (instanceId === null) {
-            node.isInstanced = false;
-            return false;
-        }
+        if (instanceId === null) return (node.isInstanced = false, false);
         
         node.isInstanced = true;
         node.instanceId = instanceId;
