@@ -1,9 +1,16 @@
 import {Plugin} from './Plugin.js';
 
+/**
+ * Manages plugins for the SpaceGraph system
+ */
 export class PluginManager {
     space = null;
     plugins = new Map();
 
+    /**
+     * Create a new PluginManager
+     * @param {SpaceGraph} space - The SpaceGraph instance
+     */
     constructor(space) {
         if (!space) {
             throw new TypeError('PluginManager requires a space instance');
@@ -11,6 +18,10 @@ export class PluginManager {
         this.space = space;
     }
 
+    /**
+     * Add a plugin to the manager
+     * @param {Plugin} plugin - The plugin to add
+     */
     add(plugin) {
         if (!(plugin instanceof Plugin)) {
             throw new TypeError('PluginManager: Attempted to add an object that is not an instance of Plugin.');
@@ -23,14 +34,27 @@ export class PluginManager {
         this.plugins.set(pluginName, plugin);
     }
 
+    /**
+     * Get a plugin by name
+     * @param {string} name - The plugin name
+     * @returns {Plugin|undefined} The plugin or undefined
+     */
     getPlugin(name) {
         return this.plugins.get(name) ?? undefined;
     }
 
+    /**
+     * Get all registered plugins
+     * @returns {Plugin[]} Array of plugins
+     */
     getAllPlugins() {
         return [...this.plugins.values()];
     }
 
+    /**
+     * Initialize all registered plugins
+     * @returns {Promise<void>} Promise that resolves when all plugins are initialized
+     */
     async initPlugins() {
         const pluginInitPromises = [...this.plugins.values()]
             .map(async plugin => {
@@ -51,6 +75,9 @@ export class PluginManager {
         }
     }
 
+    /**
+     * Update all registered plugins
+     */
     updatePlugins() {
         for (const plugin of this.plugins.values()) {
             try {
@@ -61,6 +88,9 @@ export class PluginManager {
         }
     }
 
+    /**
+     * Dispose all registered plugins
+     */
     disposePlugins() {
         for (const plugin of this.plugins.values()) {
             try {
@@ -72,10 +102,20 @@ export class PluginManager {
         this.plugins.clear();
     }
 
+    /**
+     * Check if a plugin is registered
+     * @param {string} name - The plugin name
+     * @returns {boolean} True if registered
+     */
     hasPlugin(name) {
         return this.plugins.has(name);
     }
 
+    /**
+     * Remove a plugin by name
+     * @param {string} name - The plugin name
+     * @returns {boolean} True if successfully removed
+     */
     removePlugin(name) {
         const plugin = this.plugins.get(name);
         if (plugin) {
@@ -90,10 +130,18 @@ export class PluginManager {
         return false;
     }
 
+    /**
+     * Get the number of registered plugins
+     * @returns {number} Plugin count
+     */
     getPluginCount() {
         return this.plugins.size;
     }
 
+    /**
+     * Get all registered plugin names
+     * @returns {string[]} Array of plugin names
+     */
     getPluginNames() {
         return [...this.plugins.keys()];
     }

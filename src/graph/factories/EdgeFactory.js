@@ -5,6 +5,13 @@ import {defaultEdgeType, edgeTypes} from './edgeTypes.js';
  * Factory for creating edge instances with improved organization
  */
 export class EdgeFactory extends BaseFactory {
+    /** @type {SpaceGraph} SpaceGraph instance */
+    space = null;
+
+    /**
+     * Create a new EdgeFactory
+     * @param {SpaceGraph} space - SpaceGraph instance
+     */
     constructor(space) {
         super();
         this.space = space;

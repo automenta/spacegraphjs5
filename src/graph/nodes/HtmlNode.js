@@ -4,14 +4,35 @@ import {Node} from './Node.js';
 import {applyLabelLOD} from '../../utils/labelUtils.js';
 import {GRAPH_CONSTANTS} from '../constants.js';
 
+/**
+ * HTML Node class for graph nodes with HTML content
+ */
 export class HtmlNode extends Node {
+    /** @type {string} Node type name */
     static typeName = 'html';
+    
+    /** @type {Object} Minimum size constraints */
     static MIN_SIZE = {width: 80, height: 40};
+    
+    /** @type {Object} Content scale range */
     static CONTENT_SCALE_RANGE = {min: 0.3, max: 3.0};
+    
+    /** @type {HTMLElement|null} HTML element */
     htmlElement = null;
+    
+    /** @type {Object} Node size */
     size = {width: GRAPH_CONSTANTS.DEFAULT_NODE_SIZE * 3.2, height: GRAPH_CONSTANTS.DEFAULT_NODE_SIZE * 1.4};
+    
+    /** @type {boolean} Billboard mode */
     billboard = false;
 
+    /**
+     * Create a new HtmlNode
+     * @param {string|number} id - Node ID
+     * @param {Object} position - Node position
+     * @param {Object} data - Node data
+     * @param {number} mass - Node mass
+     */
     constructor(id, position, data = {}, mass = 1.0) {
         super(id, position, data, mass);
         const initialWidth = this.data.width ?? GRAPH_CONSTANTS.DEFAULT_NODE_SIZE * 3.2;
@@ -25,6 +46,10 @@ export class HtmlNode extends Node {
         this.setBackgroundColor(this.data.backgroundColor ?? '#333344');
     }
 
+    /**
+     * Get default node data
+     * @returns {Object} Default data
+     */
     getDefaultData() {
         return {
             label: '',
@@ -39,6 +64,11 @@ export class HtmlNode extends Node {
         };
     }
 
+    /**
+     * Create the HTML element
+     * @returns {HTMLElement} HTML element
+     * @private
+     */
     _createElement() {
         const el = document.createElement('div');
         el.className = 'node-html node-common';
@@ -68,6 +98,11 @@ export class HtmlNode extends Node {
         return el;
     }
 
+    /**
+     * Initialize content editable functionality
+     * @param {HTMLElement} element - HTML element
+     * @private
+     */
     _initContentEditable(element) {
         const contentDiv = $('.node-content', element);
         if (contentDiv && this.data.editable) {
@@ -109,6 +144,12 @@ export class HtmlNode extends Node {
         }
     }
 
+    /**
+     * Set node size
+     * @param {number} width - Width
+     * @param {number} height - Height
+     * @param {boolean} scaleContent - Scale content
+     */
     setSize(width, height, scaleContent = false) {
         const oldSize = {...this.size};
         const oldArea = oldSize.width * oldSize.height;
@@ -126,6 +167,7 @@ export class HtmlNode extends Node {
 
     /**
      * Updates the element size visually.
+     * @private
      */
     _updateElementSize() {
         if (this.htmlElement) {
@@ -134,6 +176,10 @@ export class HtmlNode extends Node {
         }
     }
 
+    /**
+     * Set content scale
+     * @param {number} scale - Scale factor
+     */
     setContentScale(scale) {
         const clampedScale = Utils.clamp(
             scale,
@@ -151,6 +197,7 @@ export class HtmlNode extends Node {
 
     /**
      * Updates the content scale visually.
+     * @private
      */
     _updateContentScale() {
         const contentEl = $('.node-content', this.htmlElement);
@@ -159,6 +206,7 @@ export class HtmlNode extends Node {
 
     /**
      * Emits the content scale change event.
+     * @private
      */
     _emitContentScaleChange() {
         this.space?.emit('graph:node:dataChanged', {
@@ -168,6 +216,10 @@ export class HtmlNode extends Node {
         });
     }
 
+    /**
+     * Set background color
+     * @param {string} color - Background color
+     */
     setBackgroundColor(color) {
         // Only update if the color actually changed
         if (this.data.backgroundColor === color) return;
@@ -179,6 +231,7 @@ export class HtmlNode extends Node {
 
     /**
      * Updates the background color visually.
+     * @private
      */
     _updateBackgroundColor() {
         this.htmlElement?.style.setProperty('--node-bg', this.data.backgroundColor);
@@ -186,6 +239,7 @@ export class HtmlNode extends Node {
 
     /**
      * Emits the background color change event.
+     * @private
      */
     _emitBackgroundColorChange() {
         this.space?.emit('graph:node:dataChanged', {
@@ -195,10 +249,17 @@ export class HtmlNode extends Node {
         });
     }
 
+    /** @type {Function} Adjust content scale */
     adjustContentScale = deltaFactor => this.setContentScale(this.data.contentScale * deltaFactor);
+    
+    /** @type {Function} Adjust node size */
     adjustNodeSize = factor =>
         this.setSize(this.size.width * factor, this.size.height * factor, false);
 
+    /**
+     * Update the node
+     * @param {SpaceGraph} space - SpaceGraph instance
+     */
     update(space) {
         if (this.cssObject) {
             this.cssObject.position.copy(this.position);
@@ -209,24 +270,43 @@ export class HtmlNode extends Node {
         }
     }
 
+    /**
+     * Get bounding sphere radius
+     * @returns {number} Radius
+     */
     getBoundingSphereRadius() {
         return Math.sqrt(this.size.width ** 2 + this.size.height ** 2) / 2;
     }
 
+    /**
+     * Set selected style
+     * @param {boolean} selected - Selected state
+     */
     setSelectedStyle(selected) {
         this.htmlElement?.classList.toggle('selected', selected);
     }
 
+    /**
+     * Start resizing the node
+     */
     startResize() {
         this.htmlElement?.classList.add('resizing');
         this.space?.plugins.getPlugin('LayoutPlugin')?.layoutManager?.getActiveLayout()?.fixNode(this);
         this.space?.emit('graph:node:resizestart', {node: this});
     }
 
+    /**
+     * Resize the node
+     * @param {number} newWidth - New width
+     * @param {number} newHeight - New height
+     */
     resize(newWidth, newHeight) {
         this.setSize(newWidth, newHeight);
     }
 
+    /**
+     * End resizing the node
+     */
     endResize() {
         this.htmlElement?.classList.remove('resizing');
         try {

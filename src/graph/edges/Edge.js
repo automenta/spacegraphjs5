@@ -4,25 +4,54 @@ import {Line2} from 'three/addons/lines/Line2.js';
 import {LineMaterial} from 'three/addons/lines/LineMaterial.js';
 import {LineGeometry} from 'three/addons/lines/LineGeometry.js';
 
+/**
+ * Base Edge class for graph edges
+ */
 export class Edge {
-    static typeName = 'straight'; // Default base edge type
+    /** @type {string} Default edge type name */
+    static typeName = 'straight';
+    
+    /** @type {number} Highlight color */
     static HIGHLIGHT_COLOR = 0x00ffff;
+    
+    /** @type {number} Default opacity */
     static DEFAULT_OPACITY = 0.8;
+    
+    /** @type {number} Highlight opacity */
     static HIGHLIGHT_OPACITY = 1.0;
+    
+    /** @type {number} Default hover opacity boost */
     static DEFAULT_HOVER_OPACITY_BOOST = 0.1;
+    
+    /** @type {number} Default hover thickness multiplier */
     static DEFAULT_HOVER_THICKNESS_MULTIPLIER = 1.1;
 
+    /** @type {Line2|null} Line object */
     line = null;
+    
+    /** @type {Object} Arrowheads object */
     arrowheads = {source: null, target: null};
+    
+    /** @type {boolean} Instanced state */
     isInstanced = false;
+    
+    /** @type {number|null} Instance ID */
     instanceId = null;
+    
+    /** @type {boolean} Highlight state */
     isHighlighted = false;
+    
+    /** @type {boolean} Hover state */
     isHovered = false;
 
     // Pre-allocate THREE.Color instances for performance
+    /** @type {THREE.Color} Start color */
     _colorStart = new THREE.Color();
+    
+    /** @type {THREE.Color} End color */
     _colorEnd = new THREE.Color();
 
+    /** @type {Object} Edge data */
     data = {
         color: 0x00d0ff,
         gradientColors: null,
@@ -35,6 +64,13 @@ export class Edge {
         arrowheadColor: null,
     };
 
+    /**
+     * Create a new Edge
+     * @param {string} id - Edge ID
+     * @param {Node} sourceNode - Source node
+     * @param {Node} targetNode - Target node
+     * @param {Object} data - Edge data
+     */
     constructor(id, sourceNode, targetNode, data = {}) {
         if (!sourceNode || !targetNode) {
             throw new TypeError('Edge requires valid source and target nodes');
@@ -71,6 +107,10 @@ export class Edge {
         this.update();
     }
 
+    /**
+     * Create arrowheads based on data
+     * @private
+     */
     _createArrowheads() {
         const arrowheadOpt = this.data.arrowhead;
         if (arrowheadOpt === true || arrowheadOpt === 'target' || arrowheadOpt === 'both') {
@@ -81,6 +121,11 @@ export class Edge {
         }
     }
 
+    /**
+     * Create the line object
+     * @returns {Line2} Line object
+     * @private
+     */
     _createLine() {
         const geometry = new LineGeometry();
         geometry.setPositions([0, 0, 0, 0, 0, 0.001]);
@@ -119,6 +164,10 @@ export class Edge {
         return line;
     }
 
+    /**
+     * Set gradient colors
+     * @private
+     */
     _setGradientColors() {
         const material = this.line?.material;
         if (!material) return;
@@ -166,6 +215,9 @@ export class Edge {
         }
     }
 
+    /**
+     * Update the edge
+     */
     update() {
         if (!this.line || !this.source || !this.target) return;
 
@@ -196,6 +248,12 @@ export class Edge {
         this._updateArrowheads();
     }
 
+    /**
+     * Check if position is valid
+     * @param {THREE.Vector3} position - Position to validate
+     * @returns {boolean} True if valid
+     * @private
+     */
     _isValidPosition(position) {
         return (
             position &&
@@ -205,6 +263,10 @@ export class Edge {
         );
     }
 
+    /**
+     * Update arrowheads
+     * @private
+     */
     _updateArrowheads() {
         const sourcePos = this.source.position;
         const targetPos = this.target.position;
@@ -222,6 +284,12 @@ export class Edge {
         }
     }
 
+    /**
+     * Create a single arrowhead
+     * @param {string} _type - Arrowhead type
+     * @returns {THREE.Mesh} Arrowhead mesh
+     * @private
+     */
     _createSingleArrowhead(_type) {
         const size = this.data.arrowheadSize || 10;
         const geometry = new THREE.ConeGeometry(size / 2, size, 8);
@@ -237,11 +305,21 @@ export class Edge {
         return arrowhead;
     }
 
+    /**
+     * Orient an arrowhead
+     * @param {THREE.Mesh} arrowhead - Arrowhead mesh
+     * @param {THREE.Vector3} direction - Direction vector
+     * @private
+     */
     _orientArrowhead(arrowhead, direction) {
         const coneUp = new THREE.Vector3(0, 1, 0);
         arrowhead.quaternion.setFromUnitVectors(coneUp, direction);
     }
 
+    /**
+     * Set highlight state
+     * @param {boolean} highlight - Highlight state
+     */
     setHighlight(highlight) {
         this.isHighlighted = highlight;
         if (!this.line?.material) return;
@@ -268,6 +346,12 @@ export class Edge {
         if (highlight && this.isHovered) this.setHoverStyle(false, true);
     }
 
+    /**
+     * Update arrowhead style
+     * @param {THREE.Mesh} arrowhead - Arrowhead mesh
+     * @param {boolean} isHighlighted - Highlight state
+     * @private
+     */
     _updateArrowheadStyle(arrowhead, isHighlighted) {
         if (!arrowhead?.material) return;
 
@@ -281,6 +365,11 @@ export class Edge {
             : Edge.DEFAULT_OPACITY;
     }
 
+    /**
+     * Set hover style
+     * @param {boolean} hovered - Hover state
+     * @param {boolean} force - Force update
+     */
     setHoverStyle(hovered, force = false) {
         if (!force && this.isHighlighted) return;
         if (!this.line?.material) return;
@@ -306,6 +395,12 @@ export class Edge {
         }
     }
 
+    /**
+     * Update arrowhead opacity
+     * @param {THREE.Mesh} arrowhead - Arrowhead mesh
+     * @param {boolean} isHovered - Hover state
+     * @private
+     */
     _updateArrowheadOpacity(arrowhead, isHovered) {
         if (!arrowhead?.material) return;
 
@@ -315,10 +410,18 @@ export class Edge {
             : baseOpacity;
     }
 
+    /**
+     * Update resolution
+     * @param {number} width - Width
+     * @param {number} height - Height
+     */
     updateResolution(width, height) {
         if (this.line?.material) this.line.material.resolution.set(width, height);
     }
 
+    /**
+     * Dispose of the edge resources
+     */
     dispose() {
         // Dispose line resources
         this.line?.geometry?.dispose();
@@ -333,6 +436,11 @@ export class Edge {
         this.arrowheads.target = null;
     }
 
+    /**
+     * Dispose of an arrowhead
+     * @param {THREE.Mesh} arrowhead - Arrowhead mesh
+     * @private
+     */
     _disposeArrowhead(arrowhead) {
         if (!arrowhead) return;
         arrowhead.geometry?.dispose();

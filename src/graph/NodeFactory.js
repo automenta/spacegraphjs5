@@ -17,13 +17,26 @@ import {ProceduralShapeNode} from './nodes/ProceduralShapeNode.js';
 import {TextMeshNode} from './nodes/TextMeshNode.js';
 import {MetaWidgetNode} from './nodes/MetaWidgetNode.js';
 
+/**
+ * Factory for creating node instances
+ */
 export class NodeFactory extends BaseFactory {
+    /** @type {SpaceGraph} SpaceGraph instance */
+    space = null;
+
+    /**
+     * Create a new NodeFactory
+     * @param {SpaceGraph} space - SpaceGraph instance
+     */
     constructor(space) {
         super();
         this.space = space;
         this.registerCoreNodeTypes();
     }
 
+    /**
+     * Register all core node types
+     */
     registerCoreNodeTypes() {
         // Core nodes
         this.registerType(HtmlNode.typeName, HtmlNode);
