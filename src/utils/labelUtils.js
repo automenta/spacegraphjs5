@@ -1,4 +1,4 @@
-import {CSS3DObject} from 'three/addons/renderers/CSS3DRenderer.js';
+import { CSS3DObject } from "three/addons/renderers/CSS3DRenderer.js";
 
 /**
  * Creates a DOM element for a 3D label.
@@ -9,19 +9,19 @@ import {CSS3DObject} from 'three/addons/renderers/CSS3DRenderer.js';
  * @returns {HTMLElement} The created div element.
  */
 export function createLabelElement(labelText, id, className, styleData = {}) {
-    const div = document.createElement('div');
-    div.className = `${className} node-common`;
-    div.textContent = labelText;
-    div.dataset.id = id; // Use generic 'id' for both node and edge labels
-    Object.assign(div.style, {
-        pointerEvents: 'none',
-        textAlign: 'center',
-        whiteSpace: 'nowrap',
-        backdropFilter: 'blur(4px)',
-        border: '1px solid var(--sg-accent-secondary)',
-        ...styleData,
-    });
-    return div;
+  const div = document.createElement("div");
+  div.className = `${className} node-common`;
+  div.textContent = labelText;
+  div.dataset.id = id; // Use generic 'id' for both node and edge labels
+  Object.assign(div.style, {
+    pointerEvents: "none",
+    textAlign: "center",
+    whiteSpace: "nowrap",
+    backdropFilter: "blur(4px)",
+    border: "1px solid var(--sg-accent-secondary)",
+    ...styleData,
+  });
+  return div;
 }
 
 /**
@@ -33,11 +33,17 @@ export function createLabelElement(labelText, id, className, styleData = {}) {
  * @param {string} type - User data type for the CSS3DObject (e.g., 'edge-label', 'shape-label').
  * @returns {CSS3DObject} The created CSS3DObject.
  */
-export function createCSS3DLabelObject(labelText, id, className, styleData, type) {
-    const div = createLabelElement(labelText, id, className, styleData);
-    const label = new CSS3DObject(div);
-    label.userData = {id: id, type: type};
-    return label;
+export function createCSS3DLabelObject(
+  labelText,
+  id,
+  className,
+  styleData,
+  type,
+) {
+  const div = createLabelElement(labelText, id, className, styleData);
+  const label = new CSS3DObject(div);
+  label.userData = { id: id, type: type };
+  return label;
 }
 
 /**
@@ -47,45 +53,47 @@ export function createCSS3DLabelObject(labelText, id, className, styleData, type
  * @param {object} space - The SpaceGraph instance, used to get camera.
  * @param {number} [baseScale=1.0] - The base content scale for HTML nodes.
  */
-export function applyLabelLOD(labelObject, labelLodData, space, baseScale = 1.0) {
-    if (!labelObject?.element || !labelLodData?.length) {
-        if (labelObject?.element) {
-            labelObject.element.style.visibility = '';
-            if (labelObject.element.classList.contains('node-html')) {
-                // For HtmlNode content
-                const contentEl = labelObject.element.querySelector('.node-content');
-                if (contentEl) contentEl.style.transform = `scale(${baseScale})`;
-            }
-        }
-        return;
+export function applyLabelLOD(
+  labelObject,
+  labelLodData,
+  space,
+  baseScale = 1.0,
+) {
+  if (!labelObject?.element) return;
+
+  const setStyles = (visibility, scale) => {
+    labelObject.element.style.visibility = visibility;
+    if (labelObject.element.classList.contains("node-html")) {
+      const contentEl = labelObject.element.querySelector(".node-content");
+      if (contentEl) contentEl.style.transform = `scale(${scale})`;
     }
+  };
 
-    const camera = space?.plugins?.getPlugin('CameraPlugin')?.getCameraInstance();
-    if (!camera) return;
+  if (!labelLodData?.length) {
+    setStyles("", baseScale);
+    return;
+  }
 
-    const distanceToCamera = labelObject.position.distanceTo(camera.position);
-    const sortedLodLevels = [...labelLodData].sort((a, b) => (b.distance || 0) - (a.distance || 0));
+  const camera = space?.plugins?.getPlugin("CameraPlugin")?.getCameraInstance();
+  if (!camera) return;
 
-    let ruleApplied = false;
-    for (const level of sortedLodLevels) {
-        if (distanceToCamera >= (level.distance || 0)) {
-            labelObject.element.style.visibility = level.style?.includes('visibility:hidden')
-                ? 'hidden'
-                : '';
-            if (labelObject.element.classList.contains('node-html')) {
-                const contentEl = labelObject.element.querySelector('.node-content');
-                if (contentEl) contentEl.style.transform = `scale(${baseScale * (level.scale ?? 1.0)})`;
-            }
-            ruleApplied = true;
-            break;
-        }
-    }
+  const distanceToCamera = labelObject.position.distanceTo(camera.position);
+  // Optimization: sort LOD levels once if possible, but here we sort every frame which is potentially expensive.
+  // Assuming labelLodData is small.
+  const sortedLodLevels = [...labelLodData].sort(
+    (a, b) => (b.distance || 0) - (a.distance || 0),
+  );
 
-    if (!ruleApplied) {
-        labelObject.element.style.visibility = '';
-        if (labelObject.element.classList.contains('node-html')) {
-            const contentEl = labelObject.element.querySelector('.node-content');
-            if (contentEl) contentEl.style.transform = `scale(${baseScale})`;
-        }
-    }
+  const level = sortedLodLevels.find(
+    (level) => distanceToCamera >= (level.distance || 0),
+  );
+
+  if (level) {
+    const visibility = level.style?.includes("visibility:hidden")
+      ? "hidden"
+      : "";
+    setStyles(visibility, baseScale * (level.scale ?? 1.0));
+  } else {
+    setStyles("", baseScale);
+  }
 }
