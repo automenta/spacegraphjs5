@@ -2,7 +2,6 @@
 import * as THREE from "three";
 
 // local imports
-import { HtmlNode } from "../graph/nodes/HtmlNode.js";
 import { PluginManager } from "./PluginManager.js";
 import { RenderingPlugin } from "../plugins/RenderingPlugin.js";
 import { CameraPlugin } from "../plugins/CameraPlugin.js";
@@ -158,7 +157,6 @@ export class SpaceGraph {
       this._initializeCamera();
       this._bindEventHandlers();
       this._setupAllEventListeners();
-      this._setupCameraMouseControls();
     } catch (error) {
       console.error("SpaceGraph initialization failed:", error);
       throw new Error(`Initialization failed: ${error.message}`);
@@ -193,18 +191,7 @@ export class SpaceGraph {
    * @private
    */
   _bindEventHandlers() {
-    const handlers = {
-      contextmenu: this._handleContextMenuEvent.bind(this),
-      mousedown: this._handleMouseDownEvent.bind(this),
-      mousemove: this._handleMouseMoveEvent.bind(this),
-      mouseup: this._handleMouseUpOrLeaveEvent.bind(this),
-      mouseleave: this._handleMouseUpOrLeaveEvent.bind(this),
-      wheel: this._handleWheelEvent.bind(this),
-    };
-
-    for (const [event, handler] of Object.entries(handlers)) {
-      this._boundHandlers.set(event, handler);
-    }
+    // Handlers are now managed by plugins (mainly UIPlugin/UIManager).
   }
 
   /**
@@ -281,10 +268,10 @@ export class SpaceGraph {
       this.focusOnNode(addedNodeInstance, 0.6, true);
       this._uiPlugin?.setSelectedNode(addedNodeInstance);
       if (
-        addedNodeInstance instanceof HtmlNode &&
-        addedNodeInstance.data.editable
+        addedNodeInstance.data?.editable &&
+        addedNodeInstance.htmlElement?.querySelector
       ) {
-        addedNodeInstance.htmlElement?.querySelector(".node-content")?.focus();
+        addedNodeInstance.htmlElement.querySelector(".node-content")?.focus();
       }
     }, 100);
   }
@@ -296,7 +283,9 @@ export class SpaceGraph {
    * @private
    */
   _handleAdjustContentScale(node, factor) {
-    if (node instanceof HtmlNode) node.adjustContentScale(factor);
+    if (typeof node.adjustContentScale === "function") {
+      node.adjustContentScale(factor);
+    }
   }
 
   /**
@@ -306,7 +295,9 @@ export class SpaceGraph {
    * @private
    */
   _handleAdjustNodeSize(node, factor) {
-    if (node instanceof HtmlNode) node.adjustNodeSize(factor);
+    if (typeof node.adjustNodeSize === "function") {
+      node.adjustNodeSize(factor);
+    }
   }
 
   /**
@@ -721,124 +712,10 @@ export class SpaceGraph {
   }
 
   /**
-   * Setup camera mouse controls
-   * @private
-   */
-  _setupCameraMouseControls() {
-    if (!this._cameraPlugin || !this.container) return;
-
-    for (const [event, handler] of this._boundHandlers) {
-      this.container.addEventListener(
-        event,
-        handler,
-        event === "wheel" ? { passive: false } : undefined,
-      );
-    }
-  }
-
-  /**
-   * Handle context menu event
-   * @param {Event} event - Context menu event
-   * @private
-   */
-  _handleContextMenuEvent(event) {
-    const cameraControls = this._cameraPlugin?.getControls();
-    if (
-      cameraControls?.cameraMode === "drag_orbit" &&
-      cameraControls?.isOrbitDragging
-    ) {
-      event.preventDefault();
-    }
-  }
-
-  /**
-   * Handle mouse down event
-   * @param {MouseEvent} event - Mouse event
-   * @private
-   */
-  _handleMouseDownEvent(event) {
-    const cameraControls = this._cameraPlugin?.getControls();
-    if (!cameraControls) return;
-
-    this._isDragging = true;
-    this._lastMouseX = event.clientX;
-    this._lastMouseY = event.clientY;
-
-    const { cameraMode, button } = {
-      cameraMode: cameraControls.cameraMode,
-      button: event.button,
-    };
-
-    switch (cameraMode) {
-      case "drag_orbit":
-        button === 0
-          ? cameraControls.startPan(event.clientX, event.clientY)
-          : (button === 1 || button === 2) &&
-            (event.preventDefault(),
-            cameraControls.startOrbitDrag(event.clientX, event.clientY));
-        break;
-      case "orbit":
-      case "top_down":
-        button === 0 && cameraControls.startPan(event.clientX, event.clientY);
-        break;
-    }
-  }
-
-  /**
-   * Handle mouse move event
-   * @param {MouseEvent} event - Mouse event
-   * @private
-   */
-  _handleMouseMoveEvent(event) {
-    if (!this._isDragging) return;
-    const cameraControls = this._cameraPlugin?.getControls();
-    if (!cameraControls) return;
-
-    const deltaX = event.clientX - this._lastMouseX;
-    const deltaY = event.clientY - this._lastMouseY;
-    this._lastMouseX = event.clientX;
-    this._lastMouseY = event.clientY;
-
-    cameraControls.isPanning && cameraControls.pan(deltaX, deltaY);
-    cameraControls.isOrbitDragging && cameraControls.orbitDrag(deltaX, deltaY);
-  }
-
-  /**
-   * Handle mouse up or leave event
-   * @private
-   */
-  _handleMouseUpOrLeaveEvent() {
-    if (!this._isDragging) return;
-    const cameraControls = this._cameraPlugin?.getControls();
-    if (!cameraControls) return;
-
-    cameraControls.isPanning && cameraControls.endPan();
-    cameraControls.isOrbitDragging && cameraControls.endOrbitDrag();
-    this._isDragging = false;
-  }
-
-  /**
-   * Handle wheel event
-   * @param {WheelEvent} event - Wheel event
-   * @private
-   */
-  _handleWheelEvent(event) {
-    const cameraControls = this._cameraPlugin?.getControls();
-    if (!cameraControls) return;
-    this.emit("ui:request:zoomCamera", event.deltaY);
-    event.preventDefault();
-  }
-
-  /**
    * Remove camera mouse controls
    * @private
    */
   _removeCameraMouseControls() {
-    if (!this.container) return;
-
-    for (const [event, handler] of this._boundHandlers) {
-      this.container.removeEventListener(event, handler);
-    }
-    this._boundHandlers.clear();
+    // Cleanup handled by plugins
   }
 }

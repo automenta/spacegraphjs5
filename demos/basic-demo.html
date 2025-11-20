@@ -4,63 +4,29 @@
     <meta charset="UTF-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
     <title>Basic Demo - SpaceGraphJS</title>
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            background: #0f0f1a;
-            color: white;
-            font-family: Arial, sans-serif;
-        }
-
-        #container {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-        }
-
-        #info {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            max-width: 400px;
-            background: rgba(0, 0, 0, 0.7);
-            padding: 15px;
-            border-radius: 8px;
-            font-size: 14px;
-            z-index: 100;
-        }
-
-        h3 {
-            margin-top: 0;
-            color: #4CAF50;
-        }
-    </style>
 </head>
 <body>
-<div id="container">
-    <div id="info">
-        <h3>Basic Demo - Recommended API Pattern</h3>
-        <p>RECOMMENDED CORE LIBRARY API: SpaceGraph should implement an ergonomic async static factory method:</p>
-        <ul>
-            <li><code>SpaceGraph.the(container, options)</code> - should be added to core library</li>
-            <li>Properly handles async initialization that constructors cannot</li>
-            <li>Starts animation automatically for immediate visual feedback</li>
-            <li>Reduces boilerplate from 4+ lines to 1 line</li>
-        </ul>
-        <p>HOW TO USE: Once implemented in the core SpaceGraph class, developers would use:</p>
-        <code>const space = await SpaceGraph.the(container);</code>
-    </div>
-    <canvas id="webgl-canvas"></canvas>
-    <div id="css3d-container"></div>
-</div>
 
 <script type="module">
     import {SpaceGraph} from '../src/index.js';
+    import {createDemoLayout} from './demoUtils.js';
 
     async function init() {
+        createDemoLayout(
+            'Basic Demo - SpaceGraphJS',
+            'Basic Demo - Recommended API Pattern',
+            `
+            <p>This demo demonstrates the recommended usage pattern for SpaceGraph:</p>
+            <ul>
+                <li><code>SpaceGraph.the(container, options)</code> static factory method</li>
+                <li>Proper async initialization</li>
+                <li>Automatic animation loop start</li>
+            </ul>
+            <p>HOW TO USE:</p>
+            <code>const space = await SpaceGraph.the(container);</code>
+            `
+        );
+
         const space = await SpaceGraph.the(document.getElementById('container'));
 
         // Create a few basic elements to demonstrate the setup
@@ -96,10 +62,7 @@
             thickness: 1
         });
 
-        // // Center the view on the created elements
-        // setTimeout(() => {
-        //     space.centerView({x: 0, y: 0, z: 0}, 500);
-        // }, 300);
+        space.centerView();
     }
 
     // Initialize when the page loads
