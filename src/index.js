@@ -34,7 +34,7 @@ export * from './layout/AdvancedLayoutManager.js';
 
 export * from './graph/edges/CurvedEdge.js';
 export * from './graph/edges/Edge.js';
-export * from './graph/EdgeFactory.js';
+export * from './graph/factories/EdgeFactory.js';
 export * from './graph/edges/LabeledEdge.js';
 export * from './graph/edges/DynamicThicknessEdge.js';
 export * from './graph/edges/DottedEdge.js';
@@ -48,7 +48,7 @@ export * from './graph/nodes/GroupNode.js';
 export * from './graph/nodes/HtmlNode.js';
 export * from './graph/nodes/IFrameNode.js';
 export * from './graph/nodes/ImageNode.js';
-export * from './graph/NodeFactory.js';
+export * from './graph/factories/NodeFactory.js';
 export * from './graph/nodes/NoteNode.js';
 export * from './graph/nodes/ShapeNode.js';
 export * from './graph/nodes/VideoNode.js';

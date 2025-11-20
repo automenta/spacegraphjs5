@@ -93,9 +93,10 @@ export class NodePlugin extends Plugin {
     this._uiPlugin?.getLinkSourceNode() === node &&
       this._uiPlugin.cancelLinking();
 
-    this._edgePlugin
-      ?.getEdgesForNode(node)
-      .forEach((edge) => this._edgePlugin?.removeEdge(edge.id));
+    for (const edge of this._edgePlugin?.getEdgesForNode(node) || []) {
+      this._edgePlugin?.removeEdge(edge.id);
+    }
+
     this._layoutPlugin?.removeNodeFromLayout(node);
 
     node.isInstanced &&

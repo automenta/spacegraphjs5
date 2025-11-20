@@ -16,7 +16,7 @@ export const Utils = {
     const [source, ...rest] = sources;
 
     if (Utils.isObject(target) && Utils.isObject(source)) {
-      Object.keys(source).forEach((key) => {
+      for (const key of Object.keys(source)) {
         const targetValue = target[key];
         const sourceValue = source[key];
 
@@ -25,7 +25,7 @@ export const Utils = {
         } else {
           target[key] = sourceValue;
         }
-      });
+      }
     }
 
     return Utils.mergeDeep(target, ...rest);
@@ -63,9 +63,9 @@ export const Utils = {
     if (Array.isArray(obj)) return obj.map((item) => Utils.deepClone(item));
 
     const clonedObj = {};
-    Object.keys(obj).forEach((key) => {
+    for (const key of Object.keys(obj)) {
       clonedObj[key] = Utils.deepClone(obj[key]);
-    });
+    }
     return clonedObj;
   },
   isEmpty: (obj) => {
