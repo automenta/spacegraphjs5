@@ -354,6 +354,23 @@ export class ShapeNode extends Node {
         return this._boundingSphere?.radius ?? this.size / 2;
     }
 
+    adjustNodeSize(factor) {
+        if (!Number.isFinite(factor) || factor <= 0) return;
+        this.size *= factor;
+        if (this.mesh) {
+            this.mesh.scale.multiplyScalar(factor);
+            this.updateBoundingSphere();
+        }
+        if (this.labelObject) {
+            const offset = this.getBoundingSphereRadius() * 1.1 + 10;
+            // Update label position relative to node center (y-offset)
+            // Need to reset position from base and re-apply offset?
+            // Actually update() handles position copy. We just need to ensure offset is recalculated.
+            // The labelObject itself doesn't scale with the node usually, but its position might need adjustment.
+            // Since update() calculates offset based on getBoundingSphereRadius, it should be fine next frame.
+        }
+    }
+
     setSelectedStyle(selected) {
         this.isSelected = selected;
         if (this.mesh instanceof THREE.LOD) {

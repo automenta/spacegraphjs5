@@ -29,6 +29,9 @@ export class DemoApp {
         // Standard Camera GUI
         this.setupCameraGUI();
 
+        // Ergonomics GUI
+        this.setupErgonomicsGUI();
+
         // Render Loop Hook
         this.space.on('render:beforeRender', () => {
             this.verificationTools.update();
@@ -86,6 +89,54 @@ export class DemoApp {
         const cameraPlugin = this.space.plugins.getPlugin('CameraPlugin');
 
         folder.add({ reset: () => cameraPlugin.resetView() }, 'reset').name('Reset View');
+    }
+
+    setupErgonomicsGUI() {
+        const folder = this.gui.addFolder('Ergonomics');
+        const plugin = this.space.plugins.getPlugin('ErgonomicsPlugin');
+        if (!plugin) return;
+
+        const config = {
+            showOverlay: plugin.config.overlayEnabled,
+            overlayPos: plugin.config.overlayPosition,
+            autotune: () => plugin.autotune(),
+            monitor: plugin.config.enabled,
+            targetSize: plugin.config.targetNodeSizePx,
+            damping: plugin.config.dampingFactor,
+            zoomSpeed: plugin.config.zoomSpeed,
+            panSpeed: plugin.config.panSpeed
+        };
+
+        folder.add(config, 'showOverlay').name('Show Stats').onChange(v => plugin.toggleOverlay(v));
+        folder.add(config, 'overlayPos', ['top-left', 'top-right', 'bottom-left', 'bottom-right'])
+              .name('Overlay Pos').onChange(v => plugin.updateConfig({ overlayPosition: v }));
+        folder.add(config, 'monitor').name('Continuous Monitor').onChange(v => plugin.updateConfig({ enabled: v }));
+        folder.add(config, 'autotune').name('Auto-Tune Visualization');
+
+        const tuning = folder.addFolder('Tuning');
+        tuning.add(config, 'targetSize', 10, 200).name('Target Size (px)').onChange(v => plugin.updateConfig({ targetNodeSizePx: v }));
+        tuning.add(config, 'damping', 0.01, 0.3).name('Inertia (Damping)').onChange(v => plugin.updateConfig({ dampingFactor: v }));
+        tuning.add(config, 'zoomSpeed', 0.1, 5.0).name('Zoom Speed').onChange(v => plugin.updateConfig({ zoomSpeed: v }));
+        tuning.add(config, 'panSpeed', 0.1, 3.0).name('Pan Speed').onChange(v => plugin.updateConfig({ panSpeed: v }));
+
+        const rlfp = folder.addFolder('Calibration (RLFP)');
+        const calObj = {
+            start: () => { plugin.calibration.start(); plugin.toggleOverlay(true); },
+            stop: () => plugin.calibration.stop(),
+            testA: () => plugin.calibration.apply('A'),
+            testB: () => plugin.calibration.apply('B'),
+            voteA: () => plugin.calibration.vote('A'),
+            voteB: () => plugin.calibration.vote('B'),
+            export: () => plugin.calibration.exportDataset()
+        };
+
+        rlfp.add(calObj, 'start').name('Start Session');
+        rlfp.add(calObj, 'stop').name('Stop Session');
+        rlfp.add(calObj, 'testA').name('Test Baseline (A)');
+        rlfp.add(calObj, 'testB').name('Test Variant (B)');
+        rlfp.add(calObj, 'voteA').name('Vote A (Keep)');
+        rlfp.add(calObj, 'voteB').name('Vote B (Adopt)');
+        rlfp.add(calObj, 'export').name('Export RLFP Data');
     }
 
     takeScreenshot() {

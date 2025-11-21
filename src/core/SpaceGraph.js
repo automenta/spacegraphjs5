@@ -13,6 +13,7 @@ import { MinimapPlugin } from "../plugins/MinimapPlugin.js";
 import { DataPlugin } from "../plugins/DataPlugin.js";
 import { FractalZoomPlugin } from "../plugins/FractalZoomPlugin.js";
 import { PerformancePlugin } from "../plugins/PerformancePlugin.js";
+import { ErgonomicsPlugin } from "../plugins/ErgonomicsPlugin.js";
 
 const isStandardNode = (n) => !n.isInstanced && n.mesh?.visible;
 const isStandardEdge = (e) => !e.isInstanced && e.line?.visible;
@@ -54,6 +55,7 @@ export class SpaceGraph {
       [DataPlugin, [this, this.plugins]],
       [FractalZoomPlugin, [this, this.plugins]],
       [PerformancePlugin, [this, this.plugins]],
+      [ErgonomicsPlugin, [this, this.plugins]],
     ]);
   }
 
