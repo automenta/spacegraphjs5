@@ -6,67 +6,6 @@
     <title>Basic Demo - SpaceGraphJS</title>
 </head>
 <body>
-
-<script type="module">
-    import {SpaceGraph} from '../src/index.js';
-    import {createDemoLayout} from './demoUtils.js';
-
-    async function init() {
-        createDemoLayout(
-            'Basic Demo - SpaceGraphJS',
-            'Basic Demo - Recommended API Pattern',
-            `
-            <p>This demo demonstrates the recommended usage pattern for SpaceGraph:</p>
-            <ul>
-                <li><code>SpaceGraph.the(container, options)</code> static factory method</li>
-                <li>Proper async initialization</li>
-                <li>Automatic animation loop start</li>
-            </ul>
-            <p>HOW TO USE:</p>
-            <code>const space = await SpaceGraph.the(container);</code>
-            `
-        );
-
-        const space = await SpaceGraph.the(document.getElementById('container'));
-
-        // Create a few basic elements to demonstrate the setup
-        const node1 = space.createNode({
-            id: 'basic-node-1',
-            type: 'shape',
-            position: {x: -100, y: 0, z: 0},
-            data: {
-                label: 'Basic Node 1',
-                shape: 'sphere',
-                size: 40,
-                color: 0x4a9eff
-            },
-            mass: 1.0
-        });
-
-        const node2 = space.createNode({
-            id: 'basic-node-2',
-            type: 'shape',
-            position: {x: 100, y: 0, z: 0},
-            data: {
-                label: 'Basic Node 2',
-                shape: 'box',
-                size: 40,
-                color: 0xff6b6b
-            },
-            mass: 1.0
-        });
-
-        space.addEdge(node1, node2, {
-            label: 'Basic Connection',
-            color: 0x888888,
-            thickness: 1
-        });
-
-        space.centerView();
-    }
-
-    // Initialize when the page loads
-    document.addEventListener('DOMContentLoaded', init);
-</script>
+    <script type="module" src="./basic-demo.js"></script>
 </body>
 </html>
