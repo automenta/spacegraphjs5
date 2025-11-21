@@ -78,6 +78,7 @@ export * from './plugins/FractalZoomPlugin.js';
 export * from './performance/PerformanceManager.js';
 export * from './performance/WorkerManager.js';
 export * from './plugins/PerformancePlugin.js';
+export * from './plugins/ErgonomicsPlugin.js';
 
 // Export THREE.js for direct access via the S namespace
 export * as THREE from 'three';

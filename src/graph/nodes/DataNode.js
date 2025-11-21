@@ -219,6 +219,21 @@ export class DataNode extends Node {
         this.labelObject?.element?.classList.toggle('selected', selected);
     }
 
+    adjustNodeSize(factor) {
+        if (!Number.isFinite(factor) || factor <= 0) return;
+        this.size *= factor;
+
+        if (this.mesh) {
+            this.mesh.scale.multiplyScalar(factor);
+            this.updateBoundingSphere();
+        }
+
+        if (this.labelObject) {
+            const offset = this.getBoundingSphereRadius() * 1.1 + GRAPH_CONSTANTS.DEFAULT_LABEL_OFFSET + 5;
+            this.labelObject.position.copy(this.position).y += offset;
+        }
+    }
+
     dispose() {
         super.dispose();
         this.texture?.dispose();

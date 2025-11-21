@@ -149,6 +149,22 @@ export class ImageNode extends Node {
         this.labelObject?.element?.classList.toggle('selected', selected);
     }
 
+    adjustNodeSize(factor) {
+        if (!Number.isFinite(factor) || factor <= 0) return;
+        this.imageSize.width *= factor;
+        this.imageSize.height *= factor;
+        if (this.mesh) {
+            this.mesh.scale.multiplyScalar(factor);
+            this.updateBoundingSphere();
+
+            if (this.labelObject) {
+                const labelOffset = this.mesh.scale.y / 2 + 20;
+                this.labelObject.position.copy(this.position);
+                this.labelObject.position.y += labelOffset;
+            }
+        }
+    }
+
     dispose() {
         this.mesh?.material?.map?.dispose();
         super.dispose();

@@ -111,6 +111,17 @@ export class VideoNode extends Node {
         this.htmlElement?.classList.toggle('selected', selected);
     }
 
+    adjustNodeSize(factor) {
+        if (!Number.isFinite(factor) || factor <= 0) return;
+        this.size.width *= factor;
+        this.size.height *= factor;
+
+        if (this.htmlElement) {
+            this.htmlElement.style.width = `${this.size.width}px`;
+            this.htmlElement.style.height = `${this.size.height}px`;
+        }
+    }
+
     dispose() {
         if (this.videoElement) {
             this.videoElement.pause();

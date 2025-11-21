@@ -127,7 +127,8 @@ export class DemoApp {
             testB: () => plugin.calibration.apply('B'),
             voteA: () => plugin.calibration.vote('A'),
             voteB: () => plugin.calibration.vote('B'),
-            export: () => plugin.calibration.exportDataset()
+            export: () => plugin.calibration.exportDataset(),
+            reset: () => plugin.calibration.reset()
         };
 
         rlfp.add(calObj, 'start').name('Start Session');
@@ -137,6 +138,7 @@ export class DemoApp {
         rlfp.add(calObj, 'voteA').name('Vote A (Keep)');
         rlfp.add(calObj, 'voteB').name('Vote B (Adopt)');
         rlfp.add(calObj, 'export').name('Export RLFP Data');
+        rlfp.add(calObj, 'reset').name('Reset Data');
     }
 
     takeScreenshot() {

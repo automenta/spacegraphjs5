@@ -108,6 +108,17 @@ export class IFrameNode extends Node {
             : this.data.borderColor;
     }
 
+    adjustNodeSize(factor) {
+        if (!Number.isFinite(factor) || factor <= 0) return;
+        this.size.width *= factor;
+        this.size.height *= factor;
+
+        if (this.htmlElement) {
+            this.htmlElement.style.width = `${this.size.width}px`;
+            this.htmlElement.style.height = `${this.size.height}px`;
+        }
+    }
+
     dispose() {
         if (this.iframeElement) this.iframeElement.src = 'about:blank';
         super.dispose();

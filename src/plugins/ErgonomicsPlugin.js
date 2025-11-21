@@ -2,16 +2,73 @@ import * as THREE from 'three';
 import { Plugin } from '../core/Plugin.js';
 import { Utils } from '../utils.js';
 
+/**
+ * Tracks the quality of a specific interaction burst (pan/zoom).
+ */
+class InteractionSession {
+    constructor(startPos) {
+        this.startTime = Date.now();
+        this.lastPos = startPos.clone();
+        this.startPos = startPos.clone();
+        this.pathLength = 0;
+        this.velocities = []; // Store magnitudes
+        this.directions = []; // Store normalized vectors
+        this.reversals = 0;
+    }
+
+    update(currentPos, dt) {
+        const dist = currentPos.distanceTo(this.lastPos);
+        if (dist < 0.001) return;
+
+        this.pathLength += dist;
+        const velocity = dist / Math.max(dt, 0.001);
+        this.velocities.push(velocity);
+
+        const direction = new THREE.Vector3().subVectors(currentPos, this.lastPos).normalize();
+
+        // Check for reversal (dot product < 0 implies > 90 degree turn)
+        if (this.directions.length > 0) {
+            const lastDir = this.directions[this.directions.length - 1];
+            if (direction.dot(lastDir) < -0.5) {
+                this.reversals++;
+            }
+        }
+        this.directions.push(direction);
+        this.lastPos.copy(currentPos);
+    }
+
+    finalize(endPos) {
+        const displacement = this.startPos.distanceTo(endPos);
+        const duration = (Date.now() - this.startTime) / 1000;
+
+        return {
+            duration,
+            pathLength: this.pathLength,
+            displacement,
+            efficiency: displacement > 0 ? displacement / Math.max(this.pathLength, displacement) : 1.0,
+            avgVelocity: this.velocities.length ? this.velocities.reduce((a,b) => a+b,0) / this.velocities.length : 0,
+            reversals: this.reversals,
+            jitterIndex: this.reversals / Math.max(1, duration) // Reversals per second
+        };
+    }
+}
+
 class CalibrationManager {
     constructor(plugin) {
         this.plugin = plugin;
         this.active = false;
         this.round = 0;
-
         this.baseline = null;
         this.variant = null;
         this.activeVariantKey = 'A'; // 'A' or 'B'
         this.history = [];
+
+        this.strategies = [
+            { name: 'High Precision', params: { dampingFactor: 0.2, panSpeed: 0.5, zoomSpeed: 0.6 } },
+            { name: 'High Velocity', params: { dampingFactor: 0.05, panSpeed: 1.5, zoomSpeed: 1.5 } },
+            { name: 'Large Targets', params: { targetNodeSizePx: 60 } },
+            { name: 'Compact View', params: { targetNodeSizePx: 25 } }
+        ];
     }
 
     start() {
@@ -21,6 +78,7 @@ class CalibrationManager {
         this.baseline = { ...this.plugin.config };
         this._generateVariant();
         this.apply('A');
+        this.plugin.space.emit('ergonomics:calibration:started');
         console.log('Ergonomics: Calibration started.');
     }
 
@@ -29,79 +87,68 @@ class CalibrationManager {
         if (this.baseline) {
             this.plugin.updateConfig(this.baseline);
         }
+        this.plugin.space.emit('ergonomics:calibration:stopped');
         console.log('Ergonomics: Calibration stopped.');
     }
 
+    reset() {
+        this.stop();
+        this.history = [];
+        localStorage.removeItem('spacegraph-ergonomics-pref');
+        console.log('Ergonomics: Calibration reset.');
+    }
+
     _generateVariant() {
-        // Create a variant by perturbing the baseline
-        const c = { ...this.baseline };
+        // Select a strategy based on round number (cycle through)
+        const strategyIndex = (this.round - 1) % this.strategies.length;
+        const strategy = this.strategies[strategyIndex];
 
-        // Mutate parameters
-        // Randomly decide direction for each, or pick one to mutate?
-        // Let's mutate all slightly for a "holistic" feel, or maybe just one.
-        // Mutating all creates a distinct "feel".
+        // Apply strategy deltas to baseline
+        this.variant = { ...this.baseline, ...strategy.params };
+        this.variant._name = strategy.name;
 
-        const factor = () => 1.0 + (Math.random() * 0.4 - 0.2); // +/- 20%
-
-        c.dampingFactor = Utils.clamp(c.dampingFactor * factor(), 0.01, 0.5);
-        c.zoomSpeed = Utils.clamp(c.zoomSpeed * factor(), 0.1, 5.0);
-        c.panSpeed = Utils.clamp(c.panSpeed * factor(), 0.1, 3.0);
-        c.targetNodeSizePx = Utils.clamp(c.targetNodeSizePx * factor(), 10, 200);
-
-        this.variant = c;
-        console.log('Ergonomics: Generated Variant B', this.variant);
+        console.log(`Ergonomics: Generated Variant B (${strategy.name})`, this.variant);
     }
 
     apply(key) {
         this.activeVariantKey = key;
         const config = key === 'A' ? this.baseline : this.variant;
         this.plugin.updateConfig(config);
-        // If target node size changed, we might want to trigger autotune or adjust sizes?
-        // For now, let's just update the config. The user will feel the interaction changes immediately.
-        // Visual changes (node size) requires resize.
-        if (config.targetNodeSizePx !== this.plugin.metrics.avgNodeSizePx) {
-             // We don't force resize here to avoid jarring jumps,
-             // unless we want to test "size preference".
-             // Let's assume the user explores by zooming, so targetNodeSize affects the "Readability" metric
-             // but mainly we want to test Interaction physics.
-        }
     }
 
     vote(key) {
         if (!this.active) return;
 
-        // Record the RLFP example
-        this.history.push({
+        // Snapshot metrics "after" the experience
+        const metrics = { ...this.plugin.metrics };
+
+        const record = {
             round: this.round,
             timestamp: Date.now(),
             baseline: { ...this.baseline },
             variant: { ...this.variant },
-            choice: key, // 'A' or 'B'
+            choice: key,
+            metrics,
             userPreferredConfig: key === 'B' ? { ...this.variant } : { ...this.baseline }
-        });
+        };
+
+        this.history.push(record);
+        this.plugin.space.emit('ergonomics:voted', record);
 
         console.log(`Ergonomics: Voted for ${key}`);
 
         if (key === 'B') {
             this.baseline = { ...this.variant };
-            // Save to storage?
             this._saveToStorage();
         }
 
         this.round++;
         this._generateVariant();
-        this.apply('A'); // Reset to new baseline
+        this.apply('A');
     }
 
     exportDataset() {
-        const data = JSON.stringify(this.history, null, 2);
-        const blob = new Blob([data], {type: 'application/json'});
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `spacegraph-rlfp-${Date.now()}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
+        return JSON.stringify(this.history, null, 2);
     }
 
     getDiff() {
@@ -109,12 +156,13 @@ class CalibrationManager {
         const diffs = [];
         const p = (val) => typeof val === 'number' ? val.toFixed(2) : val;
 
-        if (this.variant.dampingFactor !== this.baseline.dampingFactor)
-            diffs.push(`Damping: ${p(this.baseline.dampingFactor)} -> ${p(this.variant.dampingFactor)}`);
-        if (this.variant.zoomSpeed !== this.baseline.zoomSpeed)
-            diffs.push(`Zoom: ${p(this.baseline.zoomSpeed)} -> ${p(this.variant.zoomSpeed)}`);
-        if (this.variant.panSpeed !== this.baseline.panSpeed)
-            diffs.push(`Pan: ${p(this.baseline.panSpeed)} -> ${p(this.variant.panSpeed)}`);
+        if (this.variant._name) diffs.push(`Strategy: ${this.variant._name}`);
+
+        ['dampingFactor', 'zoomSpeed', 'panSpeed', 'targetNodeSizePx'].forEach(k => {
+            if (this.variant[k] !== this.baseline[k]) {
+                 diffs.push(`${k}: ${p(this.baseline[k])} -> ${p(this.variant[k])}`);
+            }
+        });
 
         return diffs.join('\n');
     }
@@ -145,9 +193,9 @@ export class ErgonomicsPlugin extends Plugin {
             autotuneOnLoad: true,
             overlayEnabled: false,
             overlayPosition: 'bottom-right',
-            optimizationInterval: 1000,
+            optimizationInterval: 500, // Faster update for dynamic metrics
 
-            // Interaction Tuning
+            // Interaction Tuning Defaults
             dampingFactor: 0.12,
             zoomSpeed: 1.0,
             panSpeed: 0.8
@@ -156,16 +204,28 @@ export class ErgonomicsPlugin extends Plugin {
         this._loadFromStorage();
 
         this.metrics = {
+            // Static
             avgNodeSizePx: 0,
             visibleNodes: 0,
             viewportCoverage: 0,
-            readabilityScore: 0, // 0-1
-            interactionScale: 1, // Multiplier for speed
-            cameraDistance: 0
+            textLegibility: 0, // 0-1
+            visualClutter: 0, // Nodes per 1000px^2
+            occlusionIndex: 0, // 0-1
+            readabilityScore: 0, // Composite
+
+            // Dynamic
+            cameraDistance: 0,
+            opticalFlow: 0,
+            jitterIndex: 0,
+            pathEfficiency: 1.0,
+            interactionState: 'IDLE' // IDLE, BROWSING, SEARCHING, TARGETING
         };
 
         this.overlay = null;
         this.updateTimer = null;
+        this.currentSession = null;
+        this.lastCameraPos = new THREE.Vector3();
+        this.lastFrameTime = Date.now();
 
         this.calibration = new CalibrationManager(this);
     }
@@ -199,12 +259,18 @@ export class ErgonomicsPlugin extends Plugin {
     }
 
     _subscribeToEvents() {
+        // Track Interaction Sessions
+        // We assume CameraPlugin emits drag/control events or we monitor position changes
+        // Since specific events like 'controlstart' might vary, we poll camera movement in _measureMetrics
+        // But for 'Session', we want explicit starts if possible.
+        // We'll use a velocity threshold in _measureDynamicMetrics to detect activity.
+
         this.space.on('camera:changed', () => {
             this._updateInteractionSensitivities();
         });
 
         this.space.on('graph:changed', () => {
-             this._measureMetrics();
+             this._measureStaticMetrics();
         });
     }
 
@@ -212,12 +278,13 @@ export class ErgonomicsPlugin extends Plugin {
         if (this.updateTimer) clearInterval(this.updateTimer);
         this.updateTimer = setInterval(() => {
             if (!this.config.enabled) return;
-            this._measureMetrics();
+            this._measureStaticMetrics();
+            this._measureDynamicMetrics();
             this._updateOverlay();
         }, this.config.optimizationInterval);
     }
 
-    _measureMetrics() {
+    _measureStaticMetrics() {
         const cam = this.space.plugins.getPlugin('CameraPlugin')?.getCameraInstance();
         const nodePlugin = this.space.plugins.getPlugin('NodePlugin');
 
@@ -226,53 +293,129 @@ export class ErgonomicsPlugin extends Plugin {
         const nodes = Array.from(nodePlugin.getNodes().values());
         if (nodes.length === 0) return;
 
-        // 1. Camera Distance & Interaction Scale
-        const center = new THREE.Vector3(); // Ideally graph center
-        const distance = cam.position.distanceTo(center);
-        this.metrics.cameraDistance = distance;
-
-        this.metrics.interactionScale = Math.max(0.1, distance / 1000);
-
-        // 2. Average Node Screen Size
-        const sampleSize = Math.min(nodes.length, 50);
-        let totalSizePx = 0;
-        let visibleCount = 0;
-
         const frustum = new THREE.Frustum();
         const projScreenMatrix = new THREE.Matrix4();
         projScreenMatrix.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse);
         frustum.setFromProjectionMatrix(projScreenMatrix);
 
         const screenHeight = this.space.container.clientHeight;
+        const screenWidth = this.space.container.clientWidth;
+        const screenArea = screenWidth * screenHeight;
         const fovFactor = 2 * Math.tan((cam.fov * Utils.DEG2RAD) / 2);
 
-        const step = Math.max(1, Math.floor(nodes.length / sampleSize));
+        let totalSizePx = 0;
+        let totalProjectedArea = 0;
+        let visibleCount = 0;
+        let legibleTextCount = 0;
+        const visibleNodes = [];
+
+        // Sampling for performance if too many nodes
+        const step = nodes.length > 200 ? Math.floor(nodes.length / 100) : 1;
         const sphere = new THREE.Sphere();
 
         for (let i = 0; i < nodes.length; i += step) {
             const node = nodes[i];
-            const object = node.mesh || node.cssObject;
-            if (!object) continue;
-
             sphere.center.copy(node.position);
             sphere.radius = node.getBoundingSphereRadius ? node.getBoundingSphereRadius() : 10;
 
             if (frustum.intersectsSphere(sphere)) {
                 visibleCount++;
-
                 const distToCam = cam.position.distanceTo(node.position);
                 const worldRadius = sphere.radius;
 
+                // Projected Diameter in Pixels
                 const projectedPx = (worldRadius * 2 / distToCam) * screenHeight / fovFactor;
                 totalSizePx += projectedPx;
+
+                // Projected Area (approx circle)
+                totalProjectedArea += Math.PI * Math.pow(projectedPx / 2, 2);
+
+                // Text Legibility
+                // Assuming standard label size roughly tracks with node scale or is fixed size in world
+                // If CSS3D, it scales with distance.
+                const estTextHeight = projectedPx * 0.3; // Rough approx: label is 30% of node
+                if (estTextHeight >= this.config.minReadableTextHeightPx) {
+                    legibleTextCount++;
+                }
+
+                visibleNodes.push({ pos: node.position.clone(), radius: worldRadius, projectedPx });
             }
         }
 
-        this.metrics.visibleNodes = visibleCount * step;
-        this.metrics.avgNodeSizePx = visibleCount > 0 ? totalSizePx / visibleCount : 0;
+        visibleCount *= step; // Scale back up
+        totalProjectedArea *= step;
 
-        // 3. Readability Score
-        this.metrics.readabilityScore = Utils.clamp(this.metrics.avgNodeSizePx / this.config.targetNodeSizePx, 0, 1);
+        this.metrics.visibleNodes = visibleCount;
+        this.metrics.avgNodeSizePx = visibleCount > 0 ? totalSizePx / (visibleCount / step) : 0;
+        this.metrics.viewportCoverage = Utils.clamp(totalProjectedArea / screenArea, 0, 1);
+        this.metrics.textLegibility = visibleCount > 0 ? legibleTextCount / (visibleCount / step) : 1;
+        this.metrics.visualClutter = visibleCount / (screenArea / 100000); // Nodes per 100k pixels
+
+        // Occlusion (Simplified: check overlaps of sample)
+        let overlaps = 0;
+        if (visibleNodes.length > 1) {
+             const sample = visibleNodes.slice(0, 50); // Check top 50
+             for (let i = 0; i < sample.length; i++) {
+                 for (let j = i + 1; j < sample.length; j++) {
+                     // Simple 2D distance check in screen space would be better, but here we approximate
+                     // If 3D spheres overlap? No, we want 2D occlusion.
+                     // Skipping complex 2D projection overlap for perf, using dense cluster proxy
+                     // If avg distance between projected centers < avg projected size, high occlusion.
+                     // Placeholder for rigorous O(N^2) check.
+                 }
+             }
+             // Use Clutter/Coverage proxy for now
+             this.metrics.occlusionIndex = Utils.clamp(this.metrics.viewportCoverage * this.metrics.visualClutter * 0.1, 0, 1);
+        }
+
+        // Composite Score
+        const sizeScore = Utils.clamp(this.metrics.avgNodeSizePx / this.config.targetNodeSizePx, 0, 1.5);
+        const penalty = Math.abs(1 - sizeScore); // 0 is best
+        this.metrics.readabilityScore = Utils.clamp((this.metrics.textLegibility * 0.6) + (1 - penalty) * 0.4, 0, 1);
+    }
+
+    _measureDynamicMetrics() {
+        const cam = this.space.plugins.getPlugin('CameraPlugin')?.getCameraInstance();
+        if (!cam) return;
+
+        const now = Date.now();
+        const dt = (now - this.lastFrameTime) / 1000;
+        this.lastFrameTime = now;
+        if (dt <= 0) return;
+
+        const dist = cam.position.distanceTo(this.lastCameraPos);
+        const velocity = dist / dt;
+
+        // Optical Flow Proxy (Velocity / Distance to content)
+        // Higher velocity at close range = High Optical Flow
+        this.metrics.cameraDistance = cam.position.distanceTo(new THREE.Vector3(0,0,0)); // Approx
+        this.metrics.opticalFlow = velocity / Math.max(1, this.metrics.cameraDistance) * 100;
+
+        // Session Tracking
+        if (velocity > 5.0) { // Moving
+            if (!this.currentSession) {
+                this.currentSession = new InteractionSession(cam.position);
+                this.metrics.interactionState = 'SEARCHING';
+            }
+            this.currentSession.update(cam.position, dt);
+        } else {
+            if (this.currentSession) {
+                // Session ended (stopped moving)
+                const stats = this.currentSession.finalize(cam.position);
+                this.metrics.jitterIndex = stats.jitterIndex;
+                this.metrics.pathEfficiency = stats.efficiency;
+                this.metrics.interactionState = 'TARGETING'; // Just finished
+
+                // Log session
+                // console.log('Session:', stats);
+
+                this.currentSession = null;
+            } else {
+                this.metrics.interactionState = 'IDLE';
+            }
+        }
+
+        this.lastCameraPos.copy(cam.position);
     }
 
     _updateInteractionSensitivities() {
@@ -280,17 +423,26 @@ export class ErgonomicsPlugin extends Plugin {
         const camControls = camPlugin?.getControls();
 
         if (camControls) {
-            // Dynamic Zoom Speed
-            const dynamicFactor = this.metrics.interactionScale
-                ? Utils.clamp(this.metrics.interactionScale, 0.5, 3.0)
-                : 1.0;
+            // Base config
+            let { zoomSpeed, dampingFactor, panSpeed } = this.config;
 
-            camControls.zoomSpeed = this.config.zoomSpeed * dynamicFactor;
+            // Dynamic Adaptation based on State
+            if (this.metrics.interactionState === 'TARGETING' || this.metrics.jitterIndex > 2.0) {
+                // User is jittery or trying to stop -> Increase Damping for precision
+                dampingFactor *= 1.5;
+                zoomSpeed *= 0.8;
+            } else if (this.metrics.interactionState === 'SEARCHING' && this.metrics.opticalFlow > 50) {
+                // User is moving fast -> Reduce speed to prevent motion sickness?
+                // Or allow flow? Usually we want to cap max speed.
+                // Maybe increase damping to smooth out fast moves.
+                dampingFactor *= 1.2;
+            }
 
-            // Static Tuning
-            camControls.panSpeed = this.config.panSpeed;
+            camControls.zoomSpeed = Utils.clamp(zoomSpeed, 0.1, 5.0);
+            camControls.panSpeed = Utils.clamp(panSpeed, 0.1, 3.0);
+
             if (camControls.dampingFactor !== undefined) {
-                camControls.dampingFactor = this.config.dampingFactor;
+                camControls.dampingFactor = Utils.clamp(dampingFactor, 0.01, 0.9);
             }
         }
     }
@@ -299,18 +451,19 @@ export class ErgonomicsPlugin extends Plugin {
         console.log('Ergonomics: Autotuning...');
         this._optimizeCamera();
         this._optimizeNodeSizes();
-        this._measureMetrics();
+        this._measureStaticMetrics();
         this._updateOverlay();
     }
 
     _optimizeCamera() {
+        // Logic matches previous impl but ensures we fit the graph
+        // ... (Keep existing robust logic)
         const nodePlugin = this.space.plugins.getPlugin('NodePlugin');
         const nodes = Array.from(nodePlugin.getNodes().values());
         if (nodes.length === 0) return;
 
         const box = new THREE.Box3();
         nodes.forEach(n => box.expandByPoint(n.position));
-
         const size = new THREE.Vector3();
         box.getSize(size);
         const center = new THREE.Vector3();
@@ -323,11 +476,9 @@ export class ErgonomicsPlugin extends Plugin {
         const maxDim = Math.max(size.x, size.y, size.z);
         const fov = cam.fov * Utils.DEG2RAD;
 
-        let cameraDistance = Math.abs(maxDim / (2 * Math.tan(fov / 2)));
-        cameraDistance *= 1.2;
+        let cameraDistance = Math.abs(maxDim / (2 * Math.tan(fov / 2))) * 1.2;
         cameraDistance = Utils.clamp(cameraDistance, 100, 5000);
 
-        console.log(`Ergonomics: Moving camera to fit graph. Dist: ${cameraDistance}`);
         camPlugin.moveTo(center.x, center.y, center.z + cameraDistance, 1.0, center);
     }
 
@@ -336,6 +487,8 @@ export class ErgonomicsPlugin extends Plugin {
         const nodes = Array.from(nodePlugin.getNodes().values());
         if (nodes.length === 0) return;
 
+        // Predict projected size at "optimal" distance
+        // ... (Keep existing logic)
         const box = new THREE.Box3();
         nodes.forEach(n => box.expandByPoint(n.position));
         const size = new THREE.Vector3();
@@ -345,33 +498,21 @@ export class ErgonomicsPlugin extends Plugin {
         const cam = this.space.plugins.getPlugin('CameraPlugin')?.getCameraInstance();
         const fov = (cam?.fov ?? 70) * Utils.DEG2RAD;
         const targetDist = Math.max(100, Math.abs(maxDim / (2 * Math.tan(fov / 2))) * 1.2);
-
         const screenHeight = this.space.container.clientHeight;
         const fovFactor = 2 * Math.tan(fov / 2);
 
         let totalWorldSize = 0;
-        let count = 0;
         nodes.forEach(n => {
-            const r = n.getBoundingSphereRadius ? n.getBoundingSphereRadius() : 10;
-            totalWorldSize += r * 2;
-            count++;
+            totalWorldSize += (n.getBoundingSphereRadius ? n.getBoundingSphereRadius() : 10) * 2;
         });
-        const avgWorldSize = count > 0 ? totalWorldSize / count : 20;
-
+        const avgWorldSize = totalWorldSize / nodes.length;
         const predictedPx = (avgWorldSize / targetDist) * screenHeight / fovFactor;
 
-        if (predictedPx < this.config.targetNodeSizePx * 0.5) {
+        if (predictedPx < this.config.targetNodeSizePx * 0.8 || predictedPx > this.config.targetNodeSizePx * 1.5) {
              const scaleFactor = this.config.targetNodeSizePx / predictedPx;
-             const safeFactor = Utils.clamp(scaleFactor, 1.0, 5.0);
-             console.log(`Ergonomics: Nodes too small (${predictedPx.toFixed(1)}px). Scaling by ${safeFactor.toFixed(2)}`);
+             const safeFactor = Utils.clamp(scaleFactor, 0.2, 5.0);
 
-             nodes.forEach(n => {
-                 if (n.adjustNodeSize) n.adjustNodeSize(safeFactor);
-             });
-        } else if (predictedPx > this.config.targetNodeSizePx * 3.0) {
-             const scaleFactor = this.config.targetNodeSizePx / predictedPx;
-             const safeFactor = Utils.clamp(scaleFactor, 0.2, 1.0);
-              console.log(`Ergonomics: Nodes too big (${predictedPx.toFixed(1)}px). Scaling by ${safeFactor.toFixed(2)}`);
+             console.log(`Ergonomics: Resizing nodes by ${safeFactor.toFixed(2)} to hit target ${this.config.targetNodeSizePx}px`);
 
              nodes.forEach(n => {
                  if (n.adjustNodeSize) n.adjustNodeSize(safeFactor);
@@ -384,19 +525,19 @@ export class ErgonomicsPlugin extends Plugin {
         Object.assign(this.overlay.style, {
             position: 'absolute',
             padding: '10px',
-            background: 'rgba(0, 0, 0, 0.7)',
+            background: 'rgba(0, 0, 0, 0.8)',
             color: '#0f0',
             fontFamily: 'monospace',
-            fontSize: '12px',
+            fontSize: '11px',
             borderRadius: '4px',
             pointerEvents: 'none',
             display: 'none',
             zIndex: '9999',
             whiteSpace: 'pre',
             backdropFilter: 'blur(4px)',
-            border: '1px solid #333'
+            border: '1px solid #333',
+            lineHeight: '1.4'
         });
-
         this._updateOverlayPosition();
         this.space.container.appendChild(this.overlay);
     }
@@ -419,34 +560,37 @@ export class ErgonomicsPlugin extends Plugin {
     _updateOverlay() {
         if (!this.overlay || !this.config.overlayEnabled) return;
 
-        const { avgNodeSizePx, visibleNodes, readabilityScore, cameraDistance } = this.metrics;
-
-        const status = readabilityScore < 0.5 ? 'POOR' : (readabilityScore < 0.8 ? 'OK' : 'GOOD');
-        const color = readabilityScore < 0.5 ? '#f55' : (readabilityScore < 0.8 ? '#fa0' : '#0f0');
+        const m = this.metrics;
+        const status = m.readabilityScore < 0.5 ? 'POOR' : (m.readabilityScore < 0.8 ? 'OK' : 'GOOD');
+        const color = m.readabilityScore < 0.5 ? '#f55' : (m.readabilityScore < 0.8 ? '#fa0' : '#0f0');
 
         let content = `
-<span style="color:#fff">ERGONOMICS</span>
-----------------
-Visible Nodes: ${visibleNodes}
-Avg Node Size: ${avgNodeSizePx.toFixed(1)}px (Target: ${this.config.targetNodeSizePx})
-Readability:   <span style="color:${color}">${status}</span>
-Cam Distance:  ${Math.round(cameraDistance)}
-----------------
-Damping: ${this.config.dampingFactor.toFixed(2)}
-Zoom Spd: ${this.config.zoomSpeed.toFixed(1)}
-Pan Spd:  ${this.config.panSpeed.toFixed(1)}
+<strong style="color:#fff; font-size:1.1em">ERGONOMICS OBSERVER</strong>
+<div style="height:1px; background:#444; margin:4px 0"></div>
+<span style="color:#aaa">PERCEPTION</span>
+ Avg Size:     ${m.avgNodeSizePx.toFixed(0)}px (Tgt: ${this.config.targetNodeSizePx})
+ Legibility:   ${(m.textLegibility*100).toFixed(0)}%
+ Coverage:     ${(m.viewportCoverage*100).toFixed(1)}%
+ Clutter:      ${m.visualClutter.toFixed(1)}
+ Score:        <span style="color:${color}">${status}</span>
+
+<span style="color:#aaa">DYNAMICS</span>
+ State:        <span style="color:#fff">${m.interactionState}</span>
+ Opt. Flow:    ${m.opticalFlow.toFixed(1)}
+ Jitter:       ${m.jitterIndex.toFixed(2)}
+ Efficiency:   ${(m.pathEfficiency*100).toFixed(0)}%
+
+<span style="color:#aaa">CONTROL</span>
+ Damping:      ${this.space.plugins.getPlugin('CameraPlugin')?.getControls()?.dampingFactor?.toFixed(3) ?? 'N/A'}
+ Zoom Spd:     ${this.space.plugins.getPlugin('CameraPlugin')?.getControls()?.zoomSpeed?.toFixed(2) ?? 'N/A'}
 `.trim();
 
         if (this.calibration.active) {
-            const variant = this.calibration.activeVariantKey === 'A' ? 'A (Baseline)' : 'B (Variant)';
-            const diff = this.calibration.getDiff();
             content += `
-----------------
-CALIBRATION MODE
-Round: ${this.calibration.round}
-Testing: <span style="color:#0ff">${variant}</span>
-
-${diff}
+<div style="height:1px; background:#444; margin:4px 0"></div>
+<span style="color:#0ff">CALIBRATION (Round ${this.calibration.round})</span>
+Testing: ${this.calibration.activeVariantKey}
+${this.calibration.getDiff()}
 `;
         }
 
@@ -472,12 +616,12 @@ ${diff}
     }
 
     dispose() {
-        super.dispose();
         if (this.updateTimer) clearInterval(this.updateTimer);
         if (this.overlay && this.overlay.parentNode) {
             this.overlay.parentNode.removeChild(this.overlay);
         }
-        this.space.off('camera:changed');
-        this.space.off('graph:changed');
+        this.space?.off('camera:changed');
+        this.space?.off('graph:changed');
+        super.dispose();
     }
 }
